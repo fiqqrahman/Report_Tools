@@ -80,7 +80,7 @@ if (file_exists($logoPath)) {
             font-size: 11pt;
             color: #000;
             background-color: #fff;
-            padding: 0.8cm 1.5cm 1.5cm 1.5cm;
+            padding: 0.2cm 1.5cm 1.5cm 1.5cm;
             box-sizing: border-box;
         }
 
@@ -97,7 +97,7 @@ if (file_exists($logoPath)) {
         }
 
         .line-double {
-            border-bottom: 3px double #000;
+            border-bottom: 4px solid #000;
             margin-bottom: 12px;
             margin-top: 4px;
         }
