@@ -38,19 +38,41 @@ if (isset($_GET['get_image'])) {
 
 function getPhotoDate(string $filePath): string
 {
-    $date = '';
+    $rawDate = '';
     if (function_exists('exif_read_data')) {
         $exif = @exif_read_data($filePath);
         if (isset($exif['DateTimeOriginal'])) {
-            $date = $exif['DateTimeOriginal'];
+            $rawDate = $exif['DateTimeOriginal'];
         }
     }
-    if (empty($date)) {
-        $date = date('Y-m-d', filemtime($filePath));
-    } else {
-        $date = date('Y-m-d', strtotime($date));
+
+    $timestamp = empty($rawDate) ? filemtime($filePath) : strtotime($rawDate);
+    if ($timestamp === false) {
+        $timestamp = time();
     }
-    return $date;
+
+    $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    $months = [
+        1 => 'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember'
+    ];
+
+    $dayName   = $days[(int)date('w', $timestamp)];
+    $dayNum    = date('j', $timestamp);
+    $monthName = $months[(int)date('n', $timestamp)];
+    $year      = date('Y', $timestamp);
+
+    return "{$dayName}, {$dayNum} {$monthName} {$year}";
 }
 
 $subfolderDirs = glob($driveBaseFolder . '/*', GLOB_ONLYDIR);
@@ -501,7 +523,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                         <label class="form-label fw-bold">3. Hari / Tanggal:</label>
                         <input type="text" name="tanggal" id="tanggalInput" class="form-control"
                             value="<?= htmlspecialchars($latestEXIFDate) ?>"
-                            placeholder="Contoh: Senin, 17 Agustus 2026" required>
+                            placeholder="Contoh: Selasa, 2 Agustus 2026" required>
                         <div class="form-text">Terisi otomatis dari foto terakhir di daftar terpilih, dapat diedit bebas.</div>
                     </div>
 
