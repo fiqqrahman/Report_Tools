@@ -3,7 +3,6 @@ session_start();
 require_once __DIR__ . '/db.php';
 
 $driveBaseFolder = 'G:/My Drive/PJLP/2026/DOKUMENTASI';
-
 if (!is_dir($driveBaseFolder)) {
     $driveBaseFolder = __DIR__ . '/drive_photos';
     if (!is_dir($driveBaseFolder)) {
@@ -21,7 +20,6 @@ if (isset($_GET['get_image'])) {
     $relPath = $_GET['get_image'];
     $filePath = '';
     $baseReal = '';
-
     if (str_starts_with($relPath, 'uploads/')) {
         $filePath = realpath(__DIR__ . '/' . $relPath);
         $baseReal = realpath(__DIR__ . '/uploads');
@@ -29,7 +27,6 @@ if (isset($_GET['get_image'])) {
         $baseReal = realpath($driveBaseFolder);
         $filePath = realpath($driveBaseFolder . '/' . $relPath);
     }
-
     if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
         $mimeType = mime_content_type($filePath);
         header("Content-Type: " . $mimeType);
@@ -50,12 +47,10 @@ function getPhotoDateDetails(string $filePath): array
             $rawDate = $exif['DateTimeOriginal'];
         }
     }
-
     $timestamp = empty($rawDate) ? filemtime($filePath) : strtotime($rawDate);
     if ($timestamp === false) {
         $timestamp = time();
     }
-
     $days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     $months = [
         1 => 'Januari',
@@ -71,12 +66,10 @@ function getPhotoDateDetails(string $filePath): array
         'November',
         'Desember'
     ];
-
     $dayName   = $days[(int)date('w', $timestamp)];
     $dayNum    = date('j', $timestamp);
     $monthName = $months[(int)date('n', $timestamp)];
     $year      = date('Y', $timestamp);
-
     return [
         'real_date' => date('Y-m-d', $timestamp),
         'formatted' => "{$dayName}, {$dayNum} {$monthName} {$year}"
@@ -158,7 +151,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $uraian           = $_POST['uraian'] ?? '';
 
         $photoPaths = [];
-
         foreach ($_SESSION['staged_photos'] as $relPath) {
             if (count($photoPaths) >= 2) break;
             $photoPaths[] = $relPath;
@@ -169,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (!is_dir($uploadDir)) {
                 mkdir($uploadDir, 0777, true);
             }
-
             for ($i = 0; $i < count($_FILES['uploaded_photos']['name']); $i++) {
                 if (count($photoPaths) >= 2) break;
                 if ($_FILES['uploaded_photos']['error'][$i] === UPLOAD_ERR_OK) {
@@ -177,7 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $origName = basename($_FILES['uploaded_photos']['name'][$i]);
                     $newName  = time() . '_' . $i . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $origName);
                     $targetPath = $uploadDir . '/' . $newName;
-
                     if (move_uploaded_file($tmpName, $targetPath)) {
                         $photoPaths[] = 'uploads/' . $newName;
                     }
@@ -194,7 +184,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ]);
 
         $_SESSION['staged_photos'] = [];
-
         header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
         exit;
     }
@@ -210,18 +199,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-$filterMonth = (int)($_GET['filter_month'] ?? date('n'));
-$filterYear  = (int)($_GET['filter_year'] ?? date('Y'));
+$months = [
+    1 => 'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember'
+];
 
-$prevMonth = $filterMonth - 1;
-$prevYear  = $filterYear;
-if ($prevMonth < 1) {
-    $prevMonth = 12;
-    $prevYear--;
+$startMonthInput = (int)($_GET['start_month'] ?? 8);
+$endMonthInput   = (int)($_GET['end_month'] ?? 9);
+$filterYear      = (int)($_GET['filter_year'] ?? date('Y'));
+
+$startDateInput  = $_GET['start_date'] ?? '';
+$endDateInput    = $_GET['end_date'] ?? '';
+
+if (!empty($startDateInput) && !empty($endDateInput)) {
+    $startDate = $startDateInput;
+    $endDate   = $endDateInput;
+} else {
+    $startDate = sprintf('%04d-%02d-20', $filterYear, $startMonthInput);
+    $endDate   = sprintf('%04d-%02d-20', $filterYear, $endMonthInput);
 }
-
-$startDate = sprintf('%04d-%02d-21', $prevYear, $prevMonth);
-$endDate   = sprintf('%04d-%02d-20', $filterYear, $filterMonth);
 
 $stmtLog = $pdo->prepare("SELECT * FROM tb_kegiatan WHERE tanggal_real BETWEEN :start AND :end ORDER BY tanggal_real ASC");
 $stmtLog->execute([':start' => $startDate, ':end' => $endDate]);
@@ -239,7 +245,6 @@ if (!empty($_SESSION['staged_photos'])) {
     }
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="id">
 
@@ -251,14 +256,13 @@ if (!empty($_SESSION['staged_photos'])) {
 </head>
 
 <body class="bg-light">
-    <div class="container py-4" style="max-width: 960px;">
+    <div class="container py-4" style="max-width: 980px;">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Form Log Kegiatan Harian PJLP</h5>
                 <span class="badge bg-light text-primary">Database & Path Identifier Active</span>
             </div>
             <div class="card-body">
-
                 <div class="mb-4 p-3 bg-white border rounded">
                     <label class="form-label fw-bold text-dark">1. Pilih Folder Bulan/Tahun (Google Drive):</label>
                     <form method="GET" id="subfolderForm">
@@ -266,7 +270,7 @@ if (!empty($_SESSION['staged_photos'])) {
                             <option value="">-- Pilih Folder Laporan --</option>
                             <?php foreach ($availableSubfolders as $folderName): ?>
                                 <option value="<?= htmlspecialchars($folderName) ?>" <?= $selectedSubfolder === $folderName ? 'selected' : '' ?>>
-                                    📁 <?= htmlspecialchars($folderName) ?>
+                                    <?= htmlspecialchars($folderName) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -285,12 +289,12 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <option value="">-- Pilih Foto yang Ingin Ditambahkan --</option>
                                 <?php foreach ($scannedFiles as $sf): ?>
                                     <option value="<?= htmlspecialchars($sf['rel_path']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>" data-real="<?= htmlspecialchars($sf['real_date']) ?>">
-                                        📷 <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
+                                        <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
                             <button type="button" id="btnAddStage" class="btn btn-outline-success fw-bold">
-                                ➕ Pilih Foto Ini
+                                Pilih Foto Ini
                             </button>
                         </div>
                     <?php endif; ?>
@@ -299,7 +303,7 @@ if (!empty($_SESSION['staged_photos'])) {
                 <div class="card bg-white p-3 border mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <label class="form-label fw-bold text-primary mb-0">
-                            🖼️ Daftar Foto Terpilih (Maks. 2 Foto - Bebas Lintas Folder):
+                            Daftar Foto Terpilih (Maks. 2 Foto - Bebas Lintas Folder):
                         </label>
                         <?php if (!empty($_SESSION['staged_photos'])): ?>
                             <form method="POST" class="d-inline">
@@ -308,7 +312,6 @@ if (!empty($_SESSION['staged_photos'])) {
                             </form>
                         <?php endif; ?>
                     </div>
-
                     <div id="stagedContainer" class="d-flex flex-wrap gap-3 align-items-center min-vh-10 border border-dashed rounded p-3 bg-light">
                         <?php if (empty($_SESSION['staged_photos'])): ?>
                             <span class="text-muted small italic">Belum ada foto yang dimasukkan ke daftar terpilih.</span>
@@ -320,9 +323,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 $fileLabel = $parts[1] ?? $relPath;
                                 ?>
                                 <div class="card shadow-sm border text-center p-2 bg-white" style="width: 200px;">
-                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>"
-                                        class="card-img-top rounded zoomable-img"
-                                        style="height: 130px; object-fit: cover; cursor: pointer;">
+                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="card-img-top rounded zoomable-img" style="height: 130px; object-fit: cover; cursor: pointer;">
                                     <div class="card-body p-2 text-truncate">
                                         <span class="badge bg-secondary mb-1"><?= htmlspecialchars($folderLabel) ?></span>
                                         <div class="small fw-bold text-dark text-truncate" title="<?= htmlspecialchars($fileLabel) ?>">
@@ -333,7 +334,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                         <input type="hidden" name="action" value="unstage_photo">
                                         <input type="hidden" name="photo_index" value="<?= $idx ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger w-100 py-0" style="font-size: 11px;">
-                                            ❌ Hapus
+                                            Hapus
                                         </button>
                                     </form>
                                 </div>
@@ -353,9 +354,7 @@ if (!empty($_SESSION['staged_photos'])) {
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">3. Hari / Tanggal:</label>
-                        <input type="text" name="tanggal" id="tanggalInput" class="form-control"
-                            value="<?= htmlspecialchars($latestEXIFDate) ?>"
-                            placeholder="Contoh: Selasa, 2 Agustus 2026" required>
+                        <input type="text" name="tanggal" id="tanggalInput" class="form-control" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 2 Agustus 2026" required>
                         <div class="form-text">Terisi otomatis dari foto terakhir di daftar terpilih, dapat diedit bebas.</div>
                     </div>
 
@@ -364,7 +363,7 @@ if (!empty($_SESSION['staged_photos'])) {
                         <div class="input-group mb-2">
                             <input type="text" id="aiKeywordInput" class="form-control border-purple" placeholder="Ketik kata kunci cepat... (contoh: perbaikan printer bidang SMP)">
                             <button type="button" id="btnGenerateAI" class="btn text-white fw-bold" style="background-color: #6f42c1;">
-                                ✨ Generate via AI
+                                Generate via AI
                             </button>
                         </div>
                         <textarea name="uraian" id="uraianInput" class="form-control" rows="3" placeholder="Uraian formal akan muncul di sini..." required></textarea>
@@ -372,61 +371,79 @@ if (!empty($_SESSION['staged_photos'])) {
                     </div>
 
                     <button type="submit" class="btn btn-success fw-bold w-100 py-2">
-                        ➕ Simpan Kegiatan Ke Database
+                        Simpan Kegiatan Ke Database
                     </button>
                 </form>
-
             </div>
         </div>
 
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Preview & Filter Laporan (Cut-off 21 - 20)</h5>
+                <h5 class="card-title mb-0">Preview & Filter Laporan Berdasarkan Periode</h5>
             </div>
             <div class="card-body">
-                <form method="GET" class="row g-3 align-items-center mb-4">
+                <form method="GET" class="row g-2 align-items-end mb-4">
                     <input type="hidden" name="subfolder" value="<?= htmlspecialchars($selectedSubfolder) ?>">
-                    <div class="col-auto">
-                        <label class="col-form-label fw-bold">Periode Laporan:</label>
-                    </div>
-                    <div class="col-auto">
-                        <select name="filter_month" class="form-select">
-                            <?php
-                            $months = [
-                                1 => 'Januari',
-                                'Februari',
-                                'Maret',
-                                'April',
-                                'Mei',
-                                'Juni',
-                                'Juli',
-                                'Agustus',
-                                'September',
-                                'Oktober',
-                                'November',
-                                'Desember'
-                            ];
-                            foreach ($months as $mNum => $mName):
-                            ?>
-                                <option value="<?= $mNum ?>" <?= $filterMonth === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1 small">Bulan Awal:</label>
+                        <select name="start_month" class="form-select form-select-sm">
+                            <?php foreach ($months as $mNum => $mName): ?>
+                                <option value="<?= $mNum ?>" <?= $startMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-auto">
-                        <input type="number" name="filter_year" class="form-control" value="<?= $filterYear ?>" style="width: 100px;">
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold mb-1 small">Bulan Akhir:</label>
+                        <select name="end_month" class="form-select form-select-sm">
+                            <?php foreach ($months as $mNum => $mName): ?>
+                                <option value="<?= $mNum ?>" <?= $endMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-secondary fw-bold">Filter Data</button>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold mb-1 small">Tahun:</label>
+                        <input type="number" name="filter_year" class="form-control form-select-sm" value="<?= $filterYear ?>">
                     </div>
-                    <div class="col-auto ms-auto">
-                        <a href="cetak.php?month=<?= $filterMonth ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="btn btn-danger fw-bold">
-                            📄 Cetak PDF
-                        </a>
+
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-secondary btn-sm fw-bold w-100">Filter Bulan</button>
+                    </div>
+
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold w-100" data-bs-toggle="collapse" data-bs-target="#customDateCollapse">
+                            Kustom Tanggal
+                        </button>
+                    </div>
+
+                    <div class="collapse col-12 mt-2 <?= (!empty($startDateInput) && !empty($endDateInput)) ? 'show' : '' ?>" id="customDateCollapse">
+                        <div class="p-3 border rounded bg-light row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold mb-1 small">Tanggal Awal Presisi:</label>
+                                <input type="date" name="start_date" class="form-control form-select-sm" value="<?= htmlspecialchars($startDate) ?>">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold mb-1 small">Tanggal Akhir Presisi:</label>
+                                <input type="date" name="end_date" class="form-control form-select-sm" value="<?= htmlspecialchars($endDate) ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Terapkan Tanggal</button>
+                            </div>
+                        </div>
                     </div>
                 </form>
 
-                <div class="alert alert-info py-2 small">
-                    Rentang Tanggal Aktif: <b><?= date('d-m-Y', strtotime($startDate)) ?></b> s.d. <b><?= date('d-m-Y', strtotime($endDate)) ?></b>
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light border rounded">
+                    <div class="small">
+                        Rentang Aktif Filter: <b><?= date('d-m-Y', strtotime($startDate)) ?></b> s.d. <b><?= date('d-m-Y', strtotime($endDate)) ?></b>
+                    </div>
+                    <div>
+                        <a href="cetak.php?start_date=<?= urlencode($startDate) ?>&end_date=<?= urlencode($endDate) ?>&start_month=<?= $startMonthInput ?>&end_month=<?= $endMonthInput ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="btn btn-danger btn-sm fw-bold">
+                            Cetak PDF
+                        </a>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
@@ -500,7 +517,6 @@ if (!empty($_SESSION['staged_photos'])) {
         const stagePhotoForm = document.getElementById('stagePhotoForm');
         const stagePhotoRelPath = document.getElementById('stagePhotoRelPath');
         const currentStagedCount = <?= count($_SESSION['staged_photos']) ?>;
-
         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
         const modalImageTarget = document.getElementById('modalImageTarget');
 
@@ -548,7 +564,7 @@ if (!empty($_SESSION['staged_photos'])) {
             }
 
             btn.disabled = true;
-            btn.innerHTML = '⏳ Menyusun Uraian...';
+            btn.innerHTML = ' Menyusun Uraian...';
 
             let formData = new FormData();
             formData.append('keywords', keywordsInput.value);
@@ -570,7 +586,7 @@ if (!empty($_SESSION['staged_photos'])) {
                 })
                 .finally(() => {
                     btn.disabled = false;
-                    btn.innerHTML = '✨ Generate via AI';
+                    btn.innerHTML = ' Generate via AI';
                 });
         });
     </script>

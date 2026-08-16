@@ -6,9 +6,6 @@ if (!is_dir($driveBaseFolder)) {
     $driveBaseFolder = __DIR__ . '/drive_photos';
 }
 
-$filterMonth = (int)($_GET['month'] ?? date('n'));
-$filterYear  = (int)($_GET['year'] ?? date('Y'));
-
 $months = [
     1 => 'Januari',
     'Februari',
@@ -24,21 +21,36 @@ $months = [
     'Desember'
 ];
 
-$prevMonth = $filterMonth - 1;
-$prevYear  = $filterYear;
-if ($prevMonth < 1) {
-    $prevMonth = 12;
-    $prevYear--;
+$startMonthInput = (int)($_GET['start_month'] ?? 8);
+$endMonthInput   = (int)($_GET['end_month'] ?? 9);
+$filterYear      = (int)($_GET['year'] ?? date('Y'));
+
+$startDateInput  = $_GET['start_date'] ?? '';
+$endDateInput    = $_GET['end_date'] ?? '';
+
+if (!empty($startDateInput) && !empty($endDateInput)) {
+    $startDate = $startDateInput;
+    $endDate   = $endDateInput;
+} else {
+    $startDate = sprintf('%04d-%02d-20', $filterYear, $startMonthInput);
+    $endDate   = sprintf('%04d-%02d-20', $filterYear, $endMonthInput);
 }
 
-$startDate = sprintf('%04d-%02d-21', $prevYear, $prevMonth);
-$endDate   = sprintf('%04d-%02d-20', $filterYear, $filterMonth);
+$startTs = strtotime($startDate);
+$endTs   = strtotime($endDate);
+
+$startMonthName = $months[(int)date('n', $startTs)];
+$endMonthName   = $months[(int)date('n', $endTs)];
+
+if ($startMonthName === $endMonthName) {
+    $periodeLabel = date('j', $startTs) . ' s.d. ' . date('j', $endTs) . ' ' . $endMonthName . ' ' . date('Y', $endTs);
+} else {
+    $periodeLabel = date('j', $startTs) . ' ' . $startMonthName . ' s.d. ' . date('j', $endTs) . ' ' . $endMonthName . ' ' . date('Y', $endTs);
+}
 
 $stmtLog = $pdo->prepare("SELECT * FROM tb_kegiatan WHERE tanggal_real BETWEEN :start AND :end ORDER BY tanggal_real ASC");
 $stmtLog->execute([':start' => $startDate, ':end' => $endDate]);
 $logsList = $stmtLog->fetchAll();
-
-$periodeLabel = $months[$filterMonth] . ' ' . $filterYear;
 
 function getPhysicalPath(string $relPath, string $driveBaseFolder): string
 {
@@ -80,7 +92,7 @@ if (file_exists($logoPath)) {
             font-size: 11pt;
             color: #000;
             background-color: #fff;
-            padding: 0.2cm 1.5cm 1.5cm 1.5cm;
+            padding: 0.8cm 1.5cm 1.5cm 1.5cm;
             box-sizing: border-box;
         }
 
