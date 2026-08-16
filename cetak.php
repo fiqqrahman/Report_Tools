@@ -6,9 +6,8 @@ if (!is_dir($driveBaseFolder)) {
     $driveBaseFolder = __DIR__ . '/drive_photos';
 }
 
-$filterMonth  = (int)($_GET['month'] ?? date('n'));
-$filterYear   = (int)($_GET['year'] ?? date('Y'));
-$targetFormat = $_GET['target'] ?? 'pdf';
+$filterMonth = (int)($_GET['month'] ?? date('n'));
+$filterYear  = (int)($_GET['year'] ?? date('Y'));
 
 $months = [
     1 => 'Januari',
@@ -41,13 +40,6 @@ $logsList = $stmtLog->fetchAll();
 
 $periodeLabel = $months[$filterMonth] . ' ' . $filterYear;
 
-if ($targetFormat === 'word') {
-    header("Content-Type: application/vnd.ms-word; charset=utf-8");
-    header("Content-Disposition: attachment; filename=Laporan_Harian_PJLP_" . $filterYear . sprintf('%02d', $filterMonth) . ".doc");
-    header("Pragma: no-cache");
-    header("Expires: 0");
-}
-
 function getPhysicalPath(string $relPath, string $driveBaseFolder): string
 {
     if (str_starts_with($relPath, 'uploads/')) {
@@ -76,11 +68,11 @@ if (file_exists($logoPath)) {
 
 <head>
     <meta charset="utf-8">
-    <title>Laporan Harian PJLP - <?= htmlspecialchars($periodeLabel) ?></title>
+    <title></title>
     <style>
         @page {
             size: A4 portrait;
-            margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+            margin: 0;
         }
 
         body {
@@ -88,14 +80,14 @@ if (file_exists($logoPath)) {
             font-size: 11pt;
             color: #000;
             background-color: #fff;
-            margin: 0;
-            padding: 0;
+            padding: 0.8cm 1.5cm 1.5cm 1.5cm;
+            box-sizing: border-box;
         }
 
         .kop-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .kop-table td {
@@ -106,26 +98,27 @@ if (file_exists($logoPath)) {
 
         .line-double {
             border-bottom: 3px double #000;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+            margin-top: 4px;
         }
 
         .title {
             text-align: center;
             font-weight: bold;
             font-size: 12pt;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             line-height: 1.3;
         }
 
         .biodata-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
         }
 
         .biodata-table td {
             border: none;
-            padding: 3px 0;
+            padding: 2px 0;
             vertical-align: top;
             font-size: 11pt;
         }
@@ -138,7 +131,7 @@ if (file_exists($logoPath)) {
         .main-table th,
         .main-table td {
             border: 1px solid #000;
-            padding: 8px;
+            padding: 6px;
             vertical-align: middle;
         }
 
@@ -151,7 +144,7 @@ if (file_exists($logoPath)) {
         .ttd-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 30px;
+            margin-top: 25px;
         }
 
         .ttd-table td {
@@ -172,7 +165,6 @@ if (file_exists($logoPath)) {
             max-width: 100%;
             display: block;
             margin: 4px auto;
-            border: 1px solid #ddd;
         }
 
         @media print {
@@ -186,17 +178,17 @@ if (file_exists($logoPath)) {
 <body>
     <table class="kop-table">
         <tr>
-            <td style="width: 15%; text-align: center;">
+            <td style="width: 18%; text-align: center;">
                 <?php if (!empty($logoBase64)): ?>
-                    <img src="<?= $logoBase64 ?>" style="width: 80px; height: auto;">
+                    <img src="<?= $logoBase64 ?>" style="width: 85px; height: auto;">
                 <?php endif; ?>
             </td>
-            <td style="width: 85%; text-align: center;">
-                <span style="font-size: 12pt; font-weight: bold;">PEMERINTAH KOTA PALANGKA RAYA</span><br>
-                <span style="font-size: 14pt; font-weight: bold;">DINAS PENDIDIKAN</span><br>
-                <span style="font-size: 8pt;">Jalan G.Obos XI Komplek Perkantoran Lingkar Dalam, Jekan Raya Palangka Raya, Kalimantan Tengah 73112<br>
+            <td style="width: 82%; text-align: center;">
+                <span style="font-size: 13pt; font-weight: bold; letter-spacing: 0.5px;">PEMERINTAH KOTA PALANGKA RAYA</span><br>
+                <span style="font-size: 15pt; font-weight: bold; letter-spacing: 0.5px;">DINAS PENDIDIKAN</span><br>
+                <span style="font-size: 8pt; line-height: 1.2; display: block; margin-top: 2px;">Jalan .G.Obos XI Komplek Perkantoran Lingkar Dalam, Jekan Raya Palangka Raya, Kalimantan Tengah 73112<br>
                     Telepon 0536 – 3222372, Faksimile (0536) 3221654<br>
-                    Laman disdik.palangkaraya.go.id, Pos-el disdik@palangkaraya.go.id</span>
+                    Laman <a href="http://disdik.palangkaraya.go.id" style="color:#000; text-decoration: underline;">disdik.palangkaraya.go.id</a>, Pos-el <a href="mailto:disdik@palangkaraya.go.id" style="color:#000; text-decoration: underline;">disdik@palangkaraya.go.id</a></span>
             </td>
         </tr>
     </table>
@@ -285,13 +277,11 @@ if (file_exists($logoPath)) {
         </tr>
     </table>
 
-    <?php if ($targetFormat === 'pdf'): ?>
-        <script>
-            window.onload = function() {
-                window.print();
-            }
-        </script>
-    <?php endif; ?>
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
 </body>
 
 </html>

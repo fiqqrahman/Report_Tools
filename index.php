@@ -422,9 +422,6 @@ if (!empty($_SESSION['staged_photos'])) {
                         <a href="cetak.php?month=<?= $filterMonth ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="btn btn-danger fw-bold">
                             📄 Cetak PDF
                         </a>
-                        <a href="cetak.php?month=<?= $filterMonth ?>&year=<?= $filterYear ?>&target=word" class="btn btn-primary fw-bold">
-                            📝 Export Word (.doc)
-                        </a>
                     </div>
                 </form>
 
