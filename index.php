@@ -251,234 +251,324 @@ if (!empty($_SESSION['staged_photos'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Input Laporan Harian PJLP - Dinas Pendidikan</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Sistem Laporan Harian PJLP - Dinas Pendidikan</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .collapse:not(.show) {
+            display: none;
+        }
+
+        .modal {
+            display: none;
+            background-color: rgba(15, 23, 42, 0.75);
+        }
+
+        .modal.show {
+            display: flex !important;
+        }
+    </style>
 </head>
 
-<body class="bg-light">
-    <div class="container py-4" style="max-width: 980px;">
-        <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Form Log Kegiatan Harian PJLP</h5>
-                <span class="badge bg-light text-primary">Database & Path Identifier Active</span>
+<body class="bg-slate-100/70 text-slate-800 antialiased min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+        <header class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 flex items-center justify-center shrink-0">
+                    <img src="logo.png" alt="Logo Dinas Pendidikan" class="max-h-full max-w-full object-contain">
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight">PORTAL LAPORAN HARIAN PJLP</h1>
+                    <p class="text-xs font-medium text-slate-500">Dinas Pendidikan Kota Palangka Raya</p>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="mb-4 p-3 bg-white border rounded">
-                    <label class="form-label fw-bold text-dark">1. Pilih Folder Bulan/Tahun (Google Drive):</label>
-                    <form method="GET" id="subfolderForm">
-                        <select name="subfolder" class="form-select border-primary" onchange="document.getElementById('subfolderForm').submit()">
-                            <option value="">-- Pilih Folder Laporan --</option>
-                            <?php foreach ($availableSubfolders as $folderName): ?>
-                                <option value="<?= htmlspecialchars($folderName) ?>" <?= $selectedSubfolder === $folderName ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($folderName) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </form>
+            <div class="flex items-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                <div class="text-right hidden sm:block">
+                    <div class="text-xs font-semibold text-slate-700">Taufiqurahman, S.Kom</div>
+                    <div class="text-[11px] text-slate-400">Tenaga Layanan Umum</div>
                 </div>
+            </div>
+        </header>
 
-                <div class="mb-4 p-3 border rounded bg-white">
-                    <label class="form-label fw-bold text-dark">2. Pilih Foto dari Folder "<?= htmlspecialchars($selectedSubfolder ?: 'Belum Dipilih') ?>":</label>
-                    <?php if (empty($selectedSubfolder)): ?>
-                        <div class="alert alert-warning py-2 mb-0">Silakan pilih folder di atas terlebih dahulu untuk memuat daftar foto.</div>
-                    <?php elseif (empty($scannedFiles)): ?>
-                        <div class="alert alert-info py-2 mb-0">Tidak ada berkas gambar (.jpg, .png) di dalam folder ini.</div>
-                    <?php else: ?>
-                        <div class="input-group">
-                            <select id="singlePhotoSelect" class="form-select border-secondary">
-                                <option value="">-- Pilih Foto yang Ingin Ditambahkan --</option>
-                                <?php foreach ($scannedFiles as $sf): ?>
-                                    <option value="<?= htmlspecialchars($sf['rel_path']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>" data-real="<?= htmlspecialchars($sf['real_date']) ?>">
-                                        <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="button" id="btnAddStage" class="btn btn-outline-success fw-bold">
-                                Pilih Foto Ini
-                            </button>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+            <div class="lg:col-span-5 flex flex-col gap-5">
+
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                                1. Sumber Media/lampiran
+                            </h2>
+                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">EXIF Reader</span>
                         </div>
-                    <?php endif; ?>
-                </div>
 
-                <div class="card bg-white p-3 border mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <label class="form-label fw-bold text-primary mb-0">
-                            Daftar Foto Terpilih (Maks. 2 Foto - Bebas Lintas Folder):
-                        </label>
-                        <?php if (!empty($_SESSION['staged_photos'])): ?>
-                            <form method="POST" class="d-inline">
-                                <input type="hidden" name="action" value="clear_staged">
-                                <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none p-0">Kosongkan Foto</button>
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Folder Laporan Bulan/Tahun:</label>
+                            <form method="GET" id="subfolderForm">
+                                <select name="subfolder" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" onchange="document.getElementById('subfolderForm').submit()">
+                                    <option value="">-- Pilih Folder Dokumentasi --</option>
+                                    <?php foreach ($availableSubfolders as $folderName): ?>
+                                        <option value="<?= htmlspecialchars($folderName) ?>" <?= $selectedSubfolder === $folderName ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($folderName) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </form>
-                        <?php endif; ?>
-                    </div>
-                    <div id="stagedContainer" class="d-flex flex-wrap gap-3 align-items-center min-vh-10 border border-dashed rounded p-3 bg-light">
-                        <?php if (empty($_SESSION['staged_photos'])): ?>
-                            <span class="text-muted small italic">Belum ada foto yang dimasukkan ke daftar terpilih.</span>
-                        <?php else: ?>
-                            <?php foreach ($_SESSION['staged_photos'] as $idx => $relPath): ?>
-                                <?php
-                                $parts = explode('/', $relPath);
-                                $folderLabel = $parts[0] ?? '';
-                                $fileLabel = $parts[1] ?? $relPath;
-                                ?>
-                                <div class="card shadow-sm border text-center p-2 bg-white" style="width: 200px;">
-                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="card-img-top rounded zoomable-img" style="height: 130px; object-fit: cover; cursor: pointer;">
-                                    <div class="card-body p-2 text-truncate">
-                                        <span class="badge bg-secondary mb-1"><?= htmlspecialchars($folderLabel) ?></span>
-                                        <div class="small fw-bold text-dark text-truncate" title="<?= htmlspecialchars($fileLabel) ?>">
-                                            <?= htmlspecialchars($fileLabel) ?>
-                                        </div>
-                                    </div>
-                                    <form method="POST" class="mt-1">
-                                        <input type="hidden" name="action" value="unstage_photo">
-                                        <input type="hidden" name="photo_index" value="<?= $idx ?>">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100 py-0" style="font-size: 11px;">
-                                            Hapus
-                                        </button>
-                                    </form>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Berkas Foto Dari Folder Active:</label>
+                            <?php if (empty($selectedSubfolder)): ?>
+                                <div class="p-3 bg-slate-50 border border-slate-200 text-slate-500 text-xs rounded-lg text-center">
+                                    Silakan tentukan folder di atas terlebih dahulu.
                                 </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
+                            <?php elseif (empty($scannedFiles)): ?>
+                                <div class="p-3 bg-slate-50 border border-slate-200 text-slate-500 text-xs rounded-lg text-center">
+                                    Tidak ada file foto terdeteksi dalam folder ini.
+                                </div>
+                            <?php else: ?>
+                                <div class="space-y-2">
+                                    <select id="singlePhotoSelect" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800">
+                                        <option value="">-- Pilih Berkas Gambar --</option>
+                                        <?php foreach ($scannedFiles as $sf): ?>
+                                            <option value="<?= htmlspecialchars($sf['rel_path']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>" data-real="<?= htmlspecialchars($sf['real_date']) ?>">
+                                                <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="button" id="btnAddStage" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
+                                        + Masukkan Foto Ke Daftar Terpilih
+                                    </button>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50 mt-2">
+                        <div class="flex justify-between items-center mb-2.5">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar Foto Terpilih (Maks. 2)</span>
+                            <?php if (!empty($_SESSION['staged_photos'])): ?>
+                                <form method="POST" class="inline">
+                                    <input type="hidden" name="action" value="clear_staged">
+                                    <button type="submit" class="text-[11px] text-rose-600 hover:text-rose-800 font-medium">Reset Pilih</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
+
+                        <div id="stagedContainer" class="grid grid-cols-2 gap-2 min-h-[90px] items-center">
+                            <?php if (empty($_SESSION['staged_photos'])): ?>
+                                <span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>
+                            <?php else: ?>
+                                <?php foreach ($_SESSION['staged_photos'] as $idx => $relPath): ?>
+                                    <?php
+                                    $parts = explode('/', $relPath);
+                                    $folderLabel = $parts[0] ?? '';
+                                    $fileLabel = $parts[1] ?? $relPath;
+                                    ?>
+                                    <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-center">
+                                        <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="w-full h-20 object-cover rounded mb-1.5 border border-slate-100 zoomable-img cursor-pointer">
+                                        <div class="text-[10px] font-medium text-slate-700 truncate mb-1" title="<?= htmlspecialchars($fileLabel) ?>"><?= htmlspecialchars($fileLabel) ?></div>
+                                        <form method="POST">
+                                            <input type="hidden" name="action" value="unstage_photo">
+                                            <input type="hidden" name="photo_index" value="<?= $idx ?>">
+                                            <button type="submit" class="w-full py-0.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 rounded border border-rose-200 transition">
+                                                Batal Pilih
+                                            </button>
+                                        </form>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="add">
-                    <input type="hidden" name="tanggal_real" id="tanggalRealInput" value="<?= htmlspecialchars($latestEXIFReal) ?>">
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Atau Unggah Manual Tambahan (Jika Perlu):</label>
-                        <input type="file" name="uploaded_photos[]" class="form-control" accept="image/*" multiple>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">3. Hari / Tanggal:</label>
-                        <input type="text" name="tanggal" id="tanggalInput" class="form-control" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 2 Agustus 2026" required>
-                        <div class="form-text">Terisi otomatis dari foto terakhir di daftar terpilih, dapat diedit bebas.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">4. Uraian Kegiatan:</label>
-                        <div class="input-group mb-2">
-                            <input type="text" id="aiKeywordInput" class="form-control border-purple" placeholder="Ketik kata kunci cepat... (contoh: perbaikan printer bidang SMP)">
-                            <button type="button" id="btnGenerateAI" class="btn text-white fw-bold" style="background-color: #6f42c1;">
-                                Generate via AI
-                            </button>
+            <div class="lg:col-span-7">
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 h-full flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                2. Detail & Uraian Kegiatan Laporan
+                            </h2>
+                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Form Entry</span>
                         </div>
-                        <textarea name="uraian" id="uraianInput" class="form-control" rows="3" placeholder="Uraian formal akan muncul di sini..." required></textarea>
-                        <div class="form-text">Ketik kata kunci di atas lalu klik Generate via AI, atau ketik manual langsung di kotak teks.</div>
-                    </div>
 
-                    <button type="submit" class="btn btn-success fw-bold w-100 py-2">
-                        Simpan Kegiatan Ke Database
-                    </button>
-                </form>
+                        <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                            <input type="hidden" name="action" value="add">
+                            <input type="hidden" name="tanggal_real" id="tanggalRealInput" value="<?= htmlspecialchars($latestEXIFReal) ?>">
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1">Opsional: Unggah Foto Manual Tambahan</label>
+                                <input type="file" name="uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1">Hari & Tanggal Pelaksanaan:</label>
+                                <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 2 Agustus 2026" required>
+                                <p class="mt-1 text-[11px] text-slate-400">Terisi otomatis sesuai meta EXIF foto yang dipilih, namun dapat disesuaikan manual.</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Pekerjaan / Kegiatan Harian:</label>
+                                <div class="flex gap-2 mb-2">
+                                    <input type="text" id="aiKeywordInput" class="flex-1 rounded-lg border border-indigo-200 bg-indigo-50/30 px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-600 focus:bg-white focus:outline-none" placeholder="Ketik rincian singkat... (contoh: Pembuatan Surat, Pendataan, Rapat Koordinasi, dll.)">
+                                    <button type="button" id="btnGenerateAI" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg shadow-sm transition flex items-center gap-1.5 whitespace-nowrap">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                        </svg>
+                                        AI Generate
+                                    </button>
+                                </div>
+                                <textarea name="uraian" id="uraianInput" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-xs text-slate-800 leading-relaxed shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" rows="4" placeholder="Uraian formal pekerjaan akan tampil di sini..." required></textarea>
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg shadow-sm transition duration-150 tracking-wide uppercase">
+                                Simpan Entri Laporan Harian
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Preview & Filter Laporan Berdasarkan Periode</h5>
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
+            <div class="px-6 py-4 bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <h2 class="font-bold text-sm uppercase tracking-wider">Rekapitulasi Laporan Berdasarkan Periode</h2>
+                </div>
+                <div class="text-xs text-slate-400">
+                    Rentang Filter: <span class="text-white font-medium"><?= date('d/m/Y', strtotime($startDate)) ?></span> s.d. <span class="text-white font-medium"><?= date('d/m/Y', strtotime($endDate)) ?></span>
+                </div>
             </div>
-            <div class="card-body">
-                <form method="GET" class="row g-2 align-items-end mb-4">
+
+            <div class="p-6">
+                <form method="GET" class="mb-6 space-y-3">
                     <input type="hidden" name="subfolder" value="<?= htmlspecialchars($selectedSubfolder) ?>">
 
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1 small">Bulan Awal:</label>
-                        <select name="start_month" class="form-select form-select-sm">
-                            <?php foreach ($months as $mNum => $mName): ?>
-                                <option value="<?= $mNum ?>" <?= $startMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
-                            <?php endforeach; ?>
-                        </select>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 items-end">
+                        <div class="lg:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Bulan Awal Cut-Off:</label>
+                            <select name="start_month" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none">
+                                <?php foreach ($months as $mNum => $mName): ?>
+                                    <option value="<?= $mNum ?>" <?= $startMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="lg:col-span-3">
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Bulan Akhir Cut-Off:</label>
+                            <select name="end_month" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none">
+                                <?php foreach ($months as $mNum => $mName): ?>
+                                    <option value="<?= $mNum ?>" <?= $endMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tahun:</label>
+                            <input type="number" name="filter_year" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none" value="<?= $filterYear ?>">
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <button type="submit" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
+                                Filter Periode
+                            </button>
+                        </div>
+
+                        <div class="lg:col-span-2">
+                            <button type="button" class="w-full py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg transition" data-bs-toggle="collapse" data-bs-target="#customDateCollapse">
+                                Custom Tanggal
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold mb-1 small">Bulan Akhir:</label>
-                        <select name="end_month" class="form-select form-select-sm">
-                            <?php foreach ($months as $mNum => $mName): ?>
-                                <option value="<?= $mNum ?>" <?= $endMonthInput === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-md-2">
-                        <label class="form-label fw-bold mb-1 small">Tahun:</label>
-                        <input type="number" name="filter_year" class="form-control form-select-sm" value="<?= $filterYear ?>">
-                    </div>
-
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-secondary btn-sm fw-bold w-100">Filter Bulan</button>
-                    </div>
-
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-outline-primary btn-sm fw-bold w-100" data-bs-toggle="collapse" data-bs-target="#customDateCollapse">
-                            Kustom Tanggal
-                        </button>
-                    </div>
-
-                    <div class="collapse col-12 mt-2 <?= (!empty($startDateInput) && !empty($endDateInput)) ? 'show' : '' ?>" id="customDateCollapse">
-                        <div class="p-3 border rounded bg-light row g-2 align-items-end">
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold mb-1 small">Tanggal Awal Presisi:</label>
-                                <input type="date" name="start_date" class="form-control form-select-sm" value="<?= htmlspecialchars($startDate) ?>">
+                    <div class="collapse <?= (!empty($startDateInput) && !empty($endDateInput)) ? 'show' : '' ?>" id="customDateCollapse">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                            <div class="sm:col-span-2">
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Dari Tanggal Presisi:</label>
+                                <input type="date" name="start_date" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" value="<?= htmlspecialchars($startDate) ?>">
                             </div>
-                            <div class="col-md-5">
-                                <label class="form-label fw-bold mb-1 small">Tanggal Akhir Presisi:</label>
-                                <input type="date" name="end_date" class="form-control form-select-sm" value="<?= htmlspecialchars($endDate) ?>">
+                            <div class="sm:col-span-2">
+                                <label class="block text-[11px] font-semibold text-slate-600 mb-1">Sampai Tanggal Presisi:</label>
+                                <input type="date" name="end_date" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" value="<?= htmlspecialchars($endDate) ?>">
                             </div>
-                            <div class="col-md-2">
-                                <button type="submit" class="btn btn-primary btn-sm fw-bold w-100">Terapkan Tanggal</button>
+                            <div>
+                                <button type="submit" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition">
+                                    Terapkan
+                                </button>
                             </div>
                         </div>
                     </div>
                 </form>
 
-                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light border rounded">
-                    <div class="small">
-                        Rentang Aktif Filter: <b><?= date('d-m-Y', strtotime($startDate)) ?></b> s.d. <b><?= date('d-m-Y', strtotime($endDate)) ?></b>
-                    </div>
-                    <div>
-                        <a href="cetak.php?start_date=<?= urlencode($startDate) ?>&end_date=<?= urlencode($endDate) ?>&start_month=<?= $startMonthInput ?>&end_month=<?= $endMonthInput ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="btn btn-danger btn-sm fw-bold">
-                            Cetak PDF
-                        </a>
-                    </div>
+                <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                    <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Pratinjau Cetak Laporan Fisik</span>
+                    <a href="cetak.php?start_date=<?= urlencode($startDate) ?>&end_date=<?= urlencode($endDate) ?>&start_month=<?= $startMonthInput ?>&end_month=<?= $endMonthInput ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg shadow-sm transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        Cetak Laporan PDF
+                    </a>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle">
-                        <thead class="table-secondary text-center">
-                            <tr>
-                                <th style="width: 5%;">No</th>
-                                <th style="width: 25%;">Hari / Tanggal</th>
-                                <th style="width: 45%;">Uraian Kegiatan</th>
-                                <th style="width: 15%;">Foto Kegiatan</th>
-                                <th style="width: 10%;">Aksi</th>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-700 uppercase font-bold border-b border-slate-200">
+                                <th class="p-3 text-center w-12 border-r border-slate-200">No</th>
+                                <th class="p-3 w-44 border-r border-slate-200">Hari / Tanggal</th>
+                                <th class="p-3 border-r border-slate-200">Uraian Pekerjaan / Kegiatan</th>
+                                <th class="p-3 text-center w-36 border-r border-slate-200">Dokumentasi Foto</th>
+                                <th class="p-3 text-center w-20">Aksi</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-slate-200">
                             <?php if (empty($logsList)): ?>
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted">Belum ada data kegiatan pada periode ini.</td>
+                                    <td colspan="5" class="p-5 text-center text-slate-400 italic">Belum ada entri data kegiatan pada periode rentang tanggal ini.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($logsList as $i => $log): ?>
                                     <?php $fotos = json_decode($log['fotos'], true) ?: []; ?>
-                                    <tr>
-                                        <td class="text-center"><?= $i + 1 ?></td>
-                                        <td><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
-                                        <td><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
-                                        <td class="text-center">
-                                            <?php foreach ($fotos as $relPath): ?>
-                                                <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="img-thumbnail me-1 mb-1 zoomable-img" style="max-width: 60px; max-height: 60px; cursor: pointer;">
-                                            <?php endforeach; ?>
+                                    <tr class="hover:bg-slate-50/80 transition">
+                                        <td class="p-3 text-center font-mono text-slate-500 border-r border-slate-200"><?= $i + 1 ?></td>
+                                        <td class="p-3 font-semibold text-slate-800 border-r border-slate-200"><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
+                                        <td class="p-3 leading-relaxed text-slate-700 border-r border-slate-200"><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
+                                        <td class="p-3 text-center border-r border-slate-200">
+                                            <div class="flex flex-wrap gap-1 justify-center">
+                                                <?php foreach ($fotos as $relPath): ?>
+                                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="w-10 h-10 object-cover rounded border border-slate-200 hover:scale-110 transition zoomable-img cursor-pointer">
+                                                <?php endforeach; ?>
+                                            </div>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="p-3 text-center">
                                             <form method="POST" onsubmit="return confirm('Hapus entri kegiatan ini?')">
                                                 <input type="hidden" name="action" value="delete_item">
                                                 <input type="hidden" name="item_id" value="<?= $log['id'] ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger py-0" style="font-size: 11px;">Hapus</button>
+                                                <button type="submit" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded text-[11px] border border-rose-200 transition">
+                                                    Hapus
+                                                </button>
                                             </form>
                                         </td>
                                     </tr>
@@ -496,21 +586,20 @@ if (!empty($_SESSION['staged_photos'])) {
         <input type="hidden" name="photo_rel_path" id="stagePhotoRelPath">
     </form>
 
-    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title">Inspeksi Foto</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal fade fixed inset-0 z-50 justify-center items-center" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog max-w-3xl w-full mx-4">
+            <div class="bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700">
+                <div class="px-4 py-3 bg-slate-800 text-white flex justify-between items-center border-b border-slate-700">
+                    <h5 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Inspeksi Pratinjau Foto Dokumentasi</h5>
+                    <button type="button" class="text-slate-400 hover:text-white text-lg font-bold" data-bs-dismiss="modal" aria-label="Close">&times;</button>
                 </div>
-                <div class="modal-body text-center bg-dark">
-                    <img id="modalImageTarget" src="" class="img-fluid rounded" style="max-height: 75vh;">
+                <div class="p-4 text-center bg-slate-950">
+                    <img id="modalImageTarget" src="" class="max-h-[75vh] mx-auto rounded shadow-lg object-contain">
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const singlePhotoSelect = document.getElementById('singlePhotoSelect');
         const btnAddStage = document.getElementById('btnAddStage');
@@ -586,7 +675,7 @@ if (!empty($_SESSION['staged_photos'])) {
                 })
                 .finally(() => {
                     btn.disabled = false;
-                    btn.innerHTML = ' Generate via AI';
+                    btn.innerHTML = ' AI Format';
                 });
         });
     </script>
