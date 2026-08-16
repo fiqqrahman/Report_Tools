@@ -529,7 +529,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">4. Uraian Kegiatan:</label>
-                        <textarea name="uraian" class="form-control" rows="3" placeholder="Tulis rincian kegiatan..." required></textarea>
+                        <div class="input-group mb-2">
+                            <input type="text" id="aiKeywordInput" class="form-control border-purple" placeholder="Ketik kata kunci cepat... (contoh: perbaiki jaringan server & ganti IP static)">
+                            <button type="button" id="btnGenerateAI" class="btn text-white fw-bold" style="background-color: #6f42c1;">
+                                ✨ Generate via AI
+                            </button>
+                        </div>
+                        <textarea name="uraian" id="uraianInput" class="form-control" rows="3" placeholder="Uraian formal akan muncul di sini..." required></textarea>
+                        <div class="form-text">Ketik kata kunci di atas lalu klik Generate via AI, atau ketik manual langsung di kotak teks.</div>
                     </div>
 
                     <button type="submit" class="btn btn-success fw-bold w-100 py-2">
@@ -651,6 +658,43 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                 modalImageTarget.src = this.src;
                 imageModal.show();
             });
+        });
+
+        document.getElementById('btnGenerateAI')?.addEventListener('click', function() {
+            let keywordsInput = document.getElementById('aiKeywordInput');
+            let uraianArea = document.getElementById('uraianInput');
+            let btn = this;
+
+            if (!keywordsInput.value.trim()) {
+                alert('Ketik kata kunci kegiatannya terlebih dahulu, Captain!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Menyusun Uraian...';
+
+            let formData = new FormData();
+            formData.append('keywords', keywordsInput.value);
+
+            fetch('gemini_handler.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        uraianArea.value = data.text;
+                    } else {
+                        alert('Kesalahan: ' + data.message);
+                    }
+                })
+                .catch(() => {
+                    alert('Terjadi kendala koneksi pada server lokal.');
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '✨ Generate via AI';
+                });
         });
     </script>
 </body>
