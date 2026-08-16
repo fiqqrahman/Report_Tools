@@ -6,8 +6,8 @@ if (!is_dir($driveBaseFolder)) {
     $driveBaseFolder = __DIR__ . '/drive_photos';
 }
 
-$filterMonth = (int)($_GET['month'] ?? date('n'));
-$filterYear  = (int)($_GET['year'] ?? date('Y'));
+$filterMonth  = (int)($_GET['month'] ?? date('n'));
+$filterYear   = (int)($_GET['year'] ?? date('Y'));
 $targetFormat = $_GET['target'] ?? 'pdf';
 
 $months = [
@@ -78,21 +78,30 @@ if (file_exists($logoPath)) {
     <meta charset="utf-8">
     <title>Laporan Harian PJLP - <?= htmlspecialchars($periodeLabel) ?></title>
     <style>
+        @page {
+            size: A4 portrait;
+            margin: 1.5cm 1.5cm 1.5cm 1.5cm;
+        }
+
         body {
             font-family: 'Arial', sans-serif;
             font-size: 11pt;
             color: #000;
+            background-color: #fff;
+            margin: 0;
+            padding: 0;
         }
 
         .kop-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
 
         .kop-table td {
             border: none;
-            padding: 2px;
+            padding: 0;
+            vertical-align: middle;
         }
 
         .line-double {
@@ -105,6 +114,7 @@ if (file_exists($logoPath)) {
             font-weight: bold;
             font-size: 12pt;
             margin-bottom: 15px;
+            line-height: 1.3;
         }
 
         .biodata-table {
@@ -115,8 +125,9 @@ if (file_exists($logoPath)) {
 
         .biodata-table td {
             border: none;
-            padding: 3px;
+            padding: 3px 0;
             vertical-align: top;
+            font-size: 11pt;
         }
 
         .main-table {
@@ -127,14 +138,14 @@ if (file_exists($logoPath)) {
         .main-table th,
         .main-table td {
             border: 1px solid #000;
-            padding: 6px;
-            text-align: left;
-            vertical-align: top;
+            padding: 8px;
+            vertical-align: middle;
         }
 
         .main-table th {
-            background-color: #f2f2f2;
+            background-color: #ffffff;
             text-align: center;
+            font-weight: bold;
         }
 
         .ttd-table {
@@ -149,23 +160,22 @@ if (file_exists($logoPath)) {
             vertical-align: top;
         }
 
-        .img-container {
+        .img-cell {
             text-align: center;
+            vertical-align: middle;
+            padding: 6px !important;
         }
 
         .img-kegiatan {
-            max-width: 130px;
-            max-height: 95px;
-            margin: 2px;
-            display: inline-block;
+            height: 3.7cm !important;
+            width: auto !important;
+            max-width: 100%;
+            display: block;
+            margin: 4px auto;
+            border: 1px solid #ddd;
         }
 
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 1.5cm;
-            }
-
             body {
                 background: #fff;
             }
@@ -224,9 +234,9 @@ if (file_exists($logoPath)) {
         <thead>
             <tr>
                 <th style="width: 5%;">No</th>
-                <th style="width: 22%;">Hari / Tanggal</th>
-                <th style="width: 43%;">Uraian Kegiatan</th>
-                <th style="width: 30%;">Foto Kegiatan</th>
+                <th style="width: 25%;">Hari / Tanggal</th>
+                <th style="width: 45%;">Uraian Kegiatan</th>
+                <th style="width: 25%;">Foto Kegiatan</th>
             </tr>
         </thead>
         <tbody>
@@ -241,7 +251,7 @@ if (file_exists($logoPath)) {
                         <td style="text-align: center;"><?= $i + 1 ?></td>
                         <td><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
                         <td><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
-                        <td class="img-container">
+                        <td class="img-cell">
                             <?php foreach ($fotos as $relPath): ?>
                                 <?php
                                 $physPath = getPhysicalPath($relPath, $driveBaseFolder);
