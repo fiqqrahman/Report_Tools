@@ -10,29 +10,30 @@ if (!is_dir($driveBaseFolder)) {
     }
 }
 
-$selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
-
-if (isset($_GET['get_image'])) {
-    $imgName = basename($_GET['get_image']);
-    if (!empty($selectedSubfolder)) {
-        $activeFolder = realpath($driveBaseFolder . '/' . basename($selectedSubfolder));
-        $baseReal     = realpath($driveBaseFolder);
-        $filePath     = realpath($activeFolder . '/' . $imgName);
-
-        if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
-            $mimeType = mime_content_type($filePath);
-            header("Content-Type: " . $mimeType);
-            header("Content-Length: " . filesize($filePath));
-            readfile($filePath);
-            exit;
-        }
-    }
-    http_response_code(404);
-    exit;
+if (!isset($_SESSION['staged_photos'])) {
+    $_SESSION['staged_photos'] = [];
 }
 
 if (!isset($_SESSION['logs'])) {
     $_SESSION['logs'] = [];
+}
+
+$selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
+
+if (isset($_GET['get_image'])) {
+    $relPath  = $_GET['get_image'];
+    $baseReal = realpath($driveBaseFolder);
+    $filePath = realpath($driveBaseFolder . '/' . $relPath);
+
+    if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
+        $mimeType = mime_content_type($filePath);
+        header("Content-Type: " . $mimeType);
+        header("Content-Length: " . filesize($filePath));
+        readfile($filePath);
+        exit;
+    }
+    http_response_code(404);
+    exit;
 }
 
 function getPhotoDate(string $filePath): string
@@ -62,7 +63,7 @@ if ($subfolderDirs !== false) {
 
 if (!empty($selectedSubfolder)) {
     $targetDir = realpath($driveBaseFolder . '/' . basename($selectedSubfolder));
-    $realBase = realpath($driveBaseFolder);
+    $realBase  = realpath($driveBaseFolder);
     if ($targetDir && $realBase && str_starts_with($targetDir, $realBase) && is_dir($targetDir)) {
         $_SESSION['last_subfolder'] = $selectedSubfolder;
     } else {
@@ -79,34 +80,62 @@ if (!empty($selectedSubfolder)) {
         foreach ($files as $file) {
             $filename = basename($file);
             $scannedFiles[] = [
-                'name' => $filename,
-                'path' => $file,
-                'date' => getPhotoDate($file)
+                'name'     => $filename,
+                'rel_path' => $selectedSubfolder . '/' . $filename,
+                'path'     => $file,
+                'date'     => getPhotoDate($file)
             ];
         }
     }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'stage_photo') {
+        $photoRelPath = $_POST['photo_rel_path'] ?? '';
+        if (!empty($photoRelPath)) {
+            $baseReal = realpath($driveBaseFolder);
+            $fullPath = realpath($driveBaseFolder . '/' . $photoRelPath);
+            if ($fullPath && $baseReal && str_starts_with($fullPath, $baseReal) && file_exists($fullPath)) {
+                if (count($_SESSION['staged_photos']) < 2 && !in_array($photoRelPath, $_SESSION['staged_photos'])) {
+                    $_SESSION['staged_photos'][] = $photoRelPath;
+                }
+            }
+        }
+        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        exit;
+    }
+
+    if ($_POST['action'] === 'unstage_photo') {
+        $index = (int)($_POST['photo_index'] ?? -1);
+        if (isset($_SESSION['staged_photos'][$index])) {
+            array_splice($_SESSION['staged_photos'], $index, 1);
+        }
+        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        exit;
+    }
+
+    if ($_POST['action'] === 'clear_staged') {
+        $_SESSION['staged_photos'] = [];
+        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        exit;
+    }
+
     if ($_POST['action'] === 'add') {
         $tanggal = $_POST['tanggal'] ?? '';
-        $uraian = $_POST['uraian'] ?? '';
-        $selectedPhotos = $_POST['photos'] ?? [];
+        $uraian  = $_POST['uraian'] ?? '';
 
         $photoDataArray = [];
         $count = 0;
+        $baseReal = realpath($driveBaseFolder);
 
-        if (!empty($selectedSubfolder)) {
-            $activeFolderPath = realpath($driveBaseFolder . '/' . $selectedSubfolder);
-            foreach ($selectedPhotos as $photoName) {
-                if ($count >= 2) break;
-                $fullPath = realpath($activeFolderPath . '/' . basename($photoName));
-                if ($fullPath && str_starts_with($fullPath, $activeFolderPath) && file_exists($fullPath)) {
-                    $fileData = file_get_contents($fullPath);
-                    $mimeType = mime_content_type($fullPath);
-                    $photoDataArray[] = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
-                    $count++;
-                }
+        foreach ($_SESSION['staged_photos'] as $relPath) {
+            if ($count >= 2) break;
+            $fullPath = realpath($driveBaseFolder . '/' . $relPath);
+            if ($fullPath && $baseReal && str_starts_with($fullPath, $baseReal) && file_exists($fullPath)) {
+                $fileData = file_get_contents($fullPath);
+                $mimeType = mime_content_type($fullPath);
+                $photoDataArray[] = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
+                $count++;
             }
         }
 
@@ -114,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             for ($i = 0; $i < count($_FILES['uploaded_photos']['name']); $i++) {
                 if ($count >= 2) break;
                 if ($_FILES['uploaded_photos']['error'][$i] === UPLOAD_ERR_OK) {
-                    $tmpName = $_FILES['uploaded_photos']['tmp_name'][$i];
+                    $tmpName  = $_FILES['uploaded_photos']['tmp_name'][$i];
                     $mimeType = $_FILES['uploaded_photos']['type'][$i];
                     $fileData = file_get_contents($tmpName);
                     $photoDataArray[] = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
@@ -129,14 +158,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             'fotos'   => $photoDataArray
         ];
 
+        $_SESSION['staged_photos'] = [];
+
         header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
         exit;
     }
 
     if ($_POST['action'] === 'reset') {
         $_SESSION['logs'] = [];
+        $_SESSION['staged_photos'] = [];
         header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
         exit;
+    }
+}
+
+$latestEXIFDate = '';
+if (!empty($_SESSION['staged_photos'])) {
+    $lastStagedRel = end($_SESSION['staged_photos']);
+    $fullPath = realpath($driveBaseFolder . '/' . $lastStagedRel);
+    if ($fullPath && file_exists($fullPath)) {
+        $latestEXIFDate = getPhotoDate($fullPath);
     }
 }
 
@@ -271,17 +312,17 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
             <tr>
                 <td style="width: 15%;">Nama</td>
                 <td style="width: 2%;">:</td>
-                <td style="width: 83%;">Taufiqurahman</td>
+                <td style="width: 83%;">Taufiqurahman[cite: 5]</td>
             </tr>
             <tr>
                 <td>Jenis Jasa</td>
                 <td>:</td>
-                <td>Tenaga Layanan Umum</td>
+                <td>Tenaga Layanan Umum[cite: 5]</td>
             </tr>
             <tr>
                 <td>Unit Kerja</td>
                 <td>:</td>
-                <td>Dinas Pendidikan Kota Palangka Raya</td>
+                <td>Dinas Pendidikan Kota Palangka Raya[cite: 5]</td>
             </tr>
             <tr>
                 <td>Bulan</td>
@@ -327,14 +368,14 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
             <tr>
                 <td style="width: 50%;">
                     Mengetahui,<br>
-                    Kepala Sub Bagian Umum dan Kepegawaian<br>Dinas Pendidikan Kota Palangka Raya<br><br><br><br><br>
-                    <b><u>Lenataurisia P., S.T., M.A.P</u></b><br>
-                    NIP 198204282010012013
+                    Kepala Sub Bagian Umum dan Kepegawaian<br>Dinas Pendidikan Kota Palangka Raya[cite: 5]<br><br><br><br><br>
+                    <b><u>Lenataurisia P., S.T., M.A.P</u></b>[cite: 5]<br>
+                    NIP 198204282010012013[cite: 5]
                 </td>
                 <td style="width: 50%;">
                     <br>
                     Yang Melapor,<br><br><br><br><br><br>
-                    <b><u>Taufiqurahman, S.Kom</u></b>
+                    <b><u>Taufiqurahman, S.Kom</u></b>[cite: 5]
                 </td>
             </tr>
         </table>
@@ -361,7 +402,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Form Log Kegiatan Harian PJLP</h5>
-                <span class="badge bg-light text-primary">Google Drive Sync Enabled</span>
+                <span class="badge bg-light text-primary">Cross-Folder Staging Active</span>
             </div>
             <div class="card-body">
 
@@ -379,41 +420,89 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                     </form>
                 </div>
 
+                <div class="mb-4 p-3 border rounded bg-white">
+                    <label class="form-label fw-bold text-dark">2. Pilih Foto dari Folder "<?= htmlspecialchars($selectedSubfolder ?: 'Belum Dipilih') ?>":</label>
+                    <?php if (empty($selectedSubfolder)): ?>
+                        <div class="alert alert-warning py-2 mb-0">Silakan pilih folder di atas terlebih dahulu untuk memuat daftar foto.</div>
+                    <?php elseif (empty($scannedFiles)): ?>
+                        <div class="alert alert-info py-2 mb-0">Tidak ada berkas gambar (.jpg, .png) di dalam folder ini.</div>
+                    <?php else: ?>
+                        <div class="input-group">
+                            <select id="singlePhotoSelect" class="form-select border-secondary">
+                                <option value="">-- Pilih Foto yang Ingin Ditambahkan --</option>
+                                <?php foreach ($scannedFiles as $sf): ?>
+                                    <option value="<?= htmlspecialchars($sf['rel_path']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>">
+                                        📷 <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button type="button" id="btnAddStage" class="btn btn-outline-success fw-bold">
+                                ➕ Pilih Foto Ini
+                            </button>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div class="card bg-white p-3 border mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold text-primary mb-0">
+                            🖼️ Daftar Foto Terpilih (Maks. 2 Foto - Bebas Lintas Folder):
+                        </label>
+                        <?php if (!empty($_SESSION['staged_photos'])): ?>
+                            <form method="POST" class="d-inline">
+                                <input type="hidden" name="action" value="clear_staged">
+                                <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none p-0">Kosongkan Foto</button>
+                            </form>
+                        <?php endif; ?>
+                    </div>
+
+                    <div id="stagedContainer" class="d-flex flex-wrap gap-3 align-items-center min-vh-10 border border-dashed rounded p-3 bg-light">
+                        <?php if (empty($_SESSION['staged_photos'])): ?>
+                            <span class="text-muted small italic">Belum ada foto yang dimasukkan ke daftar terpilih.</span>
+                        <?php else: ?>
+                            <?php foreach ($_SESSION['staged_photos'] as $idx => $relPath): ?>
+                                <?php
+                                $parts = explode('/', $relPath);
+                                $folderLabel = $parts[0] ?? '';
+                                $fileLabel = $parts[1] ?? $relPath;
+                                ?>
+                                <div class="card shadow-sm border text-center p-2 bg-white" style="width: 200px;">
+                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>"
+                                        class="card-img-top rounded zoomable-img"
+                                        style="height: 130px; object-fit: cover; cursor: pointer;">
+                                    <div class="card-body p-2 text-truncate">
+                                        <span class="badge bg-secondary mb-1"><?= htmlspecialchars($folderLabel) ?></span>
+                                        <div class="small fw-bold text-dark text-truncate" title="<?= htmlspecialchars($fileLabel) ?>">
+                                            <?= htmlspecialchars($fileLabel) ?>
+                                        </div>
+                                    </div>
+                                    <form method="POST" class="mt-1">
+                                        <input type="hidden" name="action" value="unstage_photo">
+                                        <input type="hidden" name="photo_index" value="<?= $idx ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100 py-0" style="font-size: 11px;">
+                                            ❌ Hapus
+                                        </button>
+                                    </form>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="add">
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">2. Pilih Foto dari Folder "<?= htmlspecialchars($selectedSubfolder ?: 'Belum Dipilih') ?>" (Maks. 2 Foto):</label>
-                        <?php if (empty($selectedSubfolder)): ?>
-                            <div class="alert alert-warning py-2">Silakan pilih folder di atas terlebih dahulu untuk memuat daftar foto.</div>
-                        <?php elseif (empty($scannedFiles)): ?>
-                            <div class="alert alert-info py-2">Tidak ada berkas gambar (.jpg, .png) di dalam folder ini.</div>
-                        <?php else: ?>
-                            <select name="photos[]" id="drivePhotoSelect" class="form-select mb-2" multiple size="4">
-                                <?php foreach ($scannedFiles as $sf): ?>
-                                    <option value="<?= htmlspecialchars($sf['name']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>">
-                                        📷 <?= htmlspecialchars($sf['name']) ?> (Tgl EXIF: <?= htmlspecialchars($sf['date']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="form-text">Tahan Ctrl / Cmd untuk memilih hingga 2 berkas foto.</span>
-                                <button type="button" id="btnOpenPreview" class="btn btn-outline-primary btn-sm fw-bold" disabled>
-                                    🔍 Inspeksi Foto Terpilih (0/2)
-                                </button>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Atau Unggah Manual (Maks. 2 Foto):</label>
+                        <label class="form-label fw-bold">Atau Unggah Manual Tambahan (Jika Perlu):</label>
                         <input type="file" name="uploaded_photos[]" class="form-control" accept="image/*" multiple>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">3. Hari / Tanggal:</label>
-                        <input type="text" name="tanggal" id="tanggalInput" class="form-control" placeholder="Contoh: Senin, 17 Agustus 2026" required>
-                        <div class="form-text">Otomatis terisi dari EXIF foto yang dipilih, namun dapat diedit secara bebas.</div>
+                        <input type="text" name="tanggal" id="tanggalInput" class="form-control"
+                            value="<?= htmlspecialchars($latestEXIFDate) ?>"
+                            placeholder="Contoh: Senin, 17 Agustus 2026" required>
+                        <div class="form-text">Terisi otomatis dari foto terakhir di daftar terpilih, dapat diedit bebas.</div>
                     </div>
 
                     <div class="mb-3">
@@ -421,19 +510,20 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                         <textarea name="uraian" class="form-control" rows="3" placeholder="Tulis rincian kegiatan..." required></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-success fw-bold">
-                        Tambah Kegiatan
+                    <button type="submit" class="btn btn-success fw-bold w-100 py-2">
+                        ➕ Simpan Kegiatan Ke Laporan
                     </button>
                 </form>
+
             </div>
         </div>
 
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">Preview & Export</h5>
+                <h5 class="card-title mb-0">Preview & Export Laporan</h5>
                 <form method="POST" class="d-inline">
                     <input type="hidden" name="action" value="reset">
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus semua data dalam sesi ini?')">Reset Data</button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hapus semua data dalam sesi ini?')">Reset Data Laporan</button>
                 </form>
             </div>
             <div class="card-body">
@@ -488,26 +578,17 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
         </div>
     </div>
 
-    <div class="modal fade" id="previewPopupModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="previewModalLabel">Pratinjau Detail Foto Terpilih</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-dark">
-                    <div id="modalPhotoGrid" class="row g-3 justify-content-center align-items-center"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <form id="stagePhotoForm" method="POST" style="display:none;">
+        <input type="hidden" name="action" value="stage_photo">
+        <input type="hidden" name="photo_rel_path" id="stagePhotoRelPath">
+    </form>
 
     <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header bg-dark text-white">
                     <h5 class="modal-title">Inspeksi Foto</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center bg-dark">
                     <img id="modalImageTarget" src="" class="img-fluid rounded" style="max-height: 75vh;">
@@ -518,74 +599,28 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const selectElem = document.getElementById('drivePhotoSelect');
-        const btnOpenPreview = document.getElementById('btnOpenPreview');
-        const modalPhotoGrid = document.getElementById('modalPhotoGrid');
-        const currentSubfolder = <?= json_encode($selectedSubfolder) ?>;
+        const singlePhotoSelect = document.getElementById('singlePhotoSelect');
+        const btnAddStage = document.getElementById('btnAddStage');
+        const stagePhotoForm = document.getElementById('stagePhotoForm');
+        const stagePhotoRelPath = document.getElementById('stagePhotoRelPath');
+        const currentStagedCount = <?= count($_SESSION['staged_photos']) ?>;
 
-        const previewPopupModal = new bootstrap.Modal(document.getElementById('previewPopupModal'));
         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
         const modalImageTarget = document.getElementById('modalImageTarget');
 
-        if (selectElem) {
-            selectElem.addEventListener('change', function() {
-                let selectedOptions = Array.from(this.selectedOptions);
-                if (selectedOptions.length > 2) {
-                    alert('Maksimal memilih 2 foto!');
-                    selectedOptions[selectedOptions.length - 1].selected = false;
-                    selectedOptions = Array.from(this.selectedOptions);
+        if (btnAddStage) {
+            btnAddStage.addEventListener('click', function() {
+                if (currentStagedCount >= 2) {
+                    alert('Maksimal 2 foto dalam daftar terpilih!');
+                    return;
                 }
-
-                if (selectedOptions.length > 0) {
-                    let firstDate = selectedOptions[0].getAttribute('data-date');
-                    if (firstDate) {
-                        document.getElementById('tanggalInput').value = firstDate;
-                    }
-                    btnOpenPreview.disabled = false;
-                    btnOpenPreview.innerHTML = `🔍 Inspeksi Foto Terpilih (${selectedOptions.length}/2)`;
-                    btnOpenPreview.className = "btn btn-primary btn-sm fw-bold";
-                } else {
-                    btnOpenPreview.disabled = true;
-                    btnOpenPreview.innerHTML = `🔍 Inspeksi Foto Terpilih (0/2)`;
-                    btnOpenPreview.className = "btn btn-outline-primary btn-sm fw-bold";
+                let val = singlePhotoSelect.value;
+                if (!val) {
+                    alert('Silakan pilih foto terlebih dahulu.');
+                    return;
                 }
-            });
-
-            btnOpenPreview.addEventListener('click', function() {
-                let selectedOptions = Array.from(selectElem.selectedOptions);
-                if (selectedOptions.length === 0) return;
-
-                modalPhotoGrid.innerHTML = '';
-
-                let colClass = selectedOptions.length === 1 ? 'col-md-10' : 'col-md-6';
-
-                selectedOptions.forEach(opt => {
-                    let fileName = opt.value;
-                    let imageUrl = `index.php?get_image=${encodeURIComponent(fileName)}&subfolder=${encodeURIComponent(currentSubfolder)}`;
-
-                    let col = document.createElement('div');
-                    col.className = colClass;
-
-                    let card = document.createElement('div');
-                    card.className = 'card bg-secondary text-white shadow border-0 text-center p-2';
-
-                    let img = document.createElement('img');
-                    img.src = imageUrl;
-                    img.className = 'card-img-top rounded';
-                    img.style.maxHeight = '65vh';
-                    img.style.objectFit = 'contain';
-
-                    let caption = document.createElement('div');
-                    caption.className = 'card-body p-2 text-truncate small fw-bold';
-                    caption.innerText = fileName;
-
-                    card.appendChild(img);
-                    card.appendChild(caption);
-                    col.appendChild(card);
-                    modalPhotoGrid.appendChild(col);
-                });
-
-                previewPopupModal.show();
+                stagePhotoRelPath.value = val;
+                stagePhotoForm.submit();
             });
         }
 
