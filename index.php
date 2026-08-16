@@ -10,6 +10,27 @@ if (!is_dir($driveBaseFolder)) {
     }
 }
 
+$selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
+
+if (isset($_GET['get_image'])) {
+    $imgName = basename($_GET['get_image']);
+    if (!empty($selectedSubfolder)) {
+        $activeFolder = realpath($driveBaseFolder . '/' . basename($selectedSubfolder));
+        $baseReal     = realpath($driveBaseFolder);
+        $filePath     = realpath($activeFolder . '/' . $imgName);
+
+        if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
+            $mimeType = mime_content_type($filePath);
+            header("Content-Type: " . $mimeType);
+            header("Content-Length: " . filesize($filePath));
+            readfile($filePath);
+            exit;
+        }
+    }
+    http_response_code(404);
+    exit;
+}
+
 if (!isset($_SESSION['logs'])) {
     $_SESSION['logs'] = [];
 }
@@ -38,8 +59,6 @@ if ($subfolderDirs !== false) {
         $availableSubfolders[] = basename($dir);
     }
 }
-
-$selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
 
 if (!empty($selectedSubfolder)) {
     $targetDir = realpath($driveBaseFolder . '/' . basename($selectedSubfolder));
@@ -135,7 +154,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
         $logoData = file_get_contents($logoPath);
         $logoBase64 = 'data:image/png;base64,' . base64_encode($logoData);
     }
-
 ?>
     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
 
@@ -371,14 +389,19 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                         <?php elseif (empty($scannedFiles)): ?>
                             <div class="alert alert-info py-2">Tidak ada berkas gambar (.jpg, .png) di dalam folder ini.</div>
                         <?php else: ?>
-                            <select name="photos[]" id="drivePhotoSelect" class="form-select" multiple size="4">
+                            <select name="photos[]" id="drivePhotoSelect" class="form-select mb-2" multiple size="4">
                                 <?php foreach ($scannedFiles as $sf): ?>
                                     <option value="<?= htmlspecialchars($sf['name']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>">
                                         📷 <?= htmlspecialchars($sf['name']) ?> (Tgl EXIF: <?= htmlspecialchars($sf['date']) ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
-                            <div class="form-text">Tahan Ctrl / Cmd untuk memilih hingga 2 berkas foto.</div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="form-text">Tahan Ctrl / Cmd untuk memilih hingga 2 berkas foto.</span>
+                                <button type="button" id="btnOpenPreview" class="btn btn-outline-primary btn-sm fw-bold" disabled>
+                                    🔍 Inspeksi Foto Terpilih (0/2)
+                                </button>
+                            </div>
                         <?php endif; ?>
                     </div>
 
@@ -451,7 +474,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
                                         <td class="text-center">
                                             <?php if (!empty($log['fotos'])): ?>
                                                 <?php foreach ($log['fotos'] as $imgData): ?>
-                                                    <img src="<?= $imgData ?>" class="img-thumbnail me-1 mb-1" style="max-width: 70px; max-height: 70px;">
+                                                    <img src="<?= $imgData ?>" class="img-thumbnail me-1 mb-1 zoomable-img" style="max-width: 80px; max-height: 80px; cursor: pointer;">
                                                 <?php endforeach; ?>
                                             <?php endif; ?>
                                         </td>
@@ -465,24 +488,113 @@ if (isset($_GET['export']) && $_GET['export'] === 'word') {
         </div>
     </div>
 
+    <div class="modal fade" id="previewPopupModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="previewModalLabel">Pratinjau Detail Foto Terpilih</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body bg-dark">
+                    <div id="modalPhotoGrid" class="row g-3 justify-content-center align-items-center"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Inspeksi Foto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center bg-dark">
+                    <img id="modalImageTarget" src="" class="img-fluid rounded" style="max-height: 75vh;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const selectElem = document.getElementById('drivePhotoSelect');
+        const btnOpenPreview = document.getElementById('btnOpenPreview');
+        const modalPhotoGrid = document.getElementById('modalPhotoGrid');
+        const currentSubfolder = <?= json_encode($selectedSubfolder) ?>;
+
+        const previewPopupModal = new bootstrap.Modal(document.getElementById('previewPopupModal'));
+        const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+        const modalImageTarget = document.getElementById('modalImageTarget');
+
         if (selectElem) {
             selectElem.addEventListener('change', function() {
                 let selectedOptions = Array.from(this.selectedOptions);
                 if (selectedOptions.length > 2) {
                     alert('Maksimal memilih 2 foto!');
                     selectedOptions[selectedOptions.length - 1].selected = false;
-                    return;
+                    selectedOptions = Array.from(this.selectedOptions);
                 }
+
                 if (selectedOptions.length > 0) {
                     let firstDate = selectedOptions[0].getAttribute('data-date');
                     if (firstDate) {
                         document.getElementById('tanggalInput').value = firstDate;
                     }
+                    btnOpenPreview.disabled = false;
+                    btnOpenPreview.innerHTML = `🔍 Inspeksi Foto Terpilih (${selectedOptions.length}/2)`;
+                    btnOpenPreview.className = "btn btn-primary btn-sm fw-bold";
+                } else {
+                    btnOpenPreview.disabled = true;
+                    btnOpenPreview.innerHTML = `🔍 Inspeksi Foto Terpilih (0/2)`;
+                    btnOpenPreview.className = "btn btn-outline-primary btn-sm fw-bold";
                 }
             });
+
+            btnOpenPreview.addEventListener('click', function() {
+                let selectedOptions = Array.from(selectElem.selectedOptions);
+                if (selectedOptions.length === 0) return;
+
+                modalPhotoGrid.innerHTML = '';
+
+                let colClass = selectedOptions.length === 1 ? 'col-md-10' : 'col-md-6';
+
+                selectedOptions.forEach(opt => {
+                    let fileName = opt.value;
+                    let imageUrl = `index.php?get_image=${encodeURIComponent(fileName)}&subfolder=${encodeURIComponent(currentSubfolder)}`;
+
+                    let col = document.createElement('div');
+                    col.className = colClass;
+
+                    let card = document.createElement('div');
+                    card.className = 'card bg-secondary text-white shadow border-0 text-center p-2';
+
+                    let img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.className = 'card-img-top rounded';
+                    img.style.maxHeight = '65vh';
+                    img.style.objectFit = 'contain';
+
+                    let caption = document.createElement('div');
+                    caption.className = 'card-body p-2 text-truncate small fw-bold';
+                    caption.innerText = fileName;
+
+                    card.appendChild(img);
+                    card.appendChild(caption);
+                    col.appendChild(card);
+                    modalPhotoGrid.appendChild(col);
+                });
+
+                previewPopupModal.show();
+            });
         }
+
+        document.querySelectorAll('.zoomable-img').forEach(img => {
+            img.addEventListener('click', function() {
+                modalImageTarget.src = this.src;
+                imageModal.show();
+            });
+        });
     </script>
 </body>
 
