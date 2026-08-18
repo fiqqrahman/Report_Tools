@@ -314,7 +314,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </svg>
                                 1. Sumber Media/lampiran
                             </h2>
-                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">EXIF Reader</span>
+                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Media Attachment</span>
                         </div>
 
                         <div class="mb-4">
@@ -416,14 +416,14 @@ if (!empty($_SESSION['staged_photos'])) {
                             <input type="hidden" name="tanggal_real" id="tanggalRealInput" value="<?= htmlspecialchars($latestEXIFReal) ?>">
 
                             <div>
-                                <label class="block text-xs font-medium text-slate-700 mb-1">Opsional: Unggah Foto Manual Tambahan</label>
+                                <label class="block text-xs font-medium text-slate-700 mb-1">Opsional: Unggah Foto Manual</label>
                                 <input type="file" name="uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
                             </div>
 
                             <div>
                                 <label class="block text-xs font-medium text-slate-700 mb-1">Hari & Tanggal Pelaksanaan:</label>
-                                <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 2 Agustus 2026" required>
-                                <p class="mt-1 text-[11px] text-slate-400">Terisi otomatis sesuai meta EXIF foto yang dipilih, namun dapat disesuaikan manual.</p>
+                                <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Hari, Tgl Bln Thn" required>
+                                <p class="mt-1 text-[11px] text-slate-400">Terisi otomatis sesuai tanggal berkas foto yang dipilih, namun dapat disesuaikan manual.</p>
                             </div>
 
                             <div>
@@ -455,10 +455,10 @@ if (!empty($_SESSION['staged_photos'])) {
                     <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
-                    <h2 class="font-bold text-sm uppercase tracking-wider">Rekapitulasi Laporan Berdasarkan Periode</h2>
+                    <h2 class="font-bold text-sm uppercase tracking-wider">Rekapitulasi Laporan</h2>
                 </div>
                 <div class="text-xs text-slate-400">
-                    Rentang Filter: <span class="text-white font-medium"><?= date('d/m/Y', strtotime($startDate)) ?></span> s.d. <span class="text-white font-medium"><?= date('d/m/Y', strtotime($endDate)) ?></span>
+                    Periode: <span class="text-white font-medium"><?= date('d/m/Y', strtotime($startDate)) ?></span> s.d. <span class="text-white font-medium"><?= date('d/m/Y', strtotime($endDate)) ?></span>
                 </div>
             </div>
 
