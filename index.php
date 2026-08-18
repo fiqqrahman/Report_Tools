@@ -497,14 +497,14 @@ if (!empty($_SESSION['staged_photos'])) {
                         </div>
 
                         <div class="lg:col-span-2">
-                            <button type="button" class="w-full py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg transition" data-bs-toggle="collapse" data-bs-target="#customDateCollapse">
+                            <button type="button" id="btnToggleCustomDate" class="w-full py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg transition">
                                 Custom Tanggal
                             </button>
                         </div>
                     </div>
 
-                    <div class="collapse <?= (!empty($startDateInput) && !empty($endDateInput)) ? 'show' : '' ?>" id="customDateCollapse">
-                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                    <div id="customDateCollapse" class="<?= (!empty($startDateInput) && !empty($endDateInput)) ? '' : 'hidden' ?>">
+                        <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-3 items-end mt-3">
                             <div class="sm:col-span-2">
                                 <label class="block text-[11px] font-semibold text-slate-600 mb-1">Dari Tanggal Presisi:</label>
                                 <input type="date" name="start_date" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" value="<?= htmlspecialchars($startDate) ?>">
@@ -608,6 +608,13 @@ if (!empty($_SESSION['staged_photos'])) {
         const currentStagedCount = <?= count($_SESSION['staged_photos']) ?>;
         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
         const modalImageTarget = document.getElementById('modalImageTarget');
+
+        document.getElementById('btnToggleCustomDate')?.addEventListener('click', function() {
+            const customDateDiv = document.getElementById('customDateCollapse');
+            if (customDateDiv) {
+                customDateDiv.classList.toggle('hidden');
+            }
+        });
 
         if (singlePhotoSelect) {
             singlePhotoSelect.addEventListener('change', function() {
