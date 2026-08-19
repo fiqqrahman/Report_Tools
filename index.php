@@ -16,28 +16,6 @@ if (!isset($_SESSION['staged_photos'])) {
 
 $selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
 
-if (isset($_GET['get_image'])) {
-    $relPath = $_GET['get_image'];
-    $filePath = '';
-    $baseReal = '';
-    if (str_starts_with($relPath, 'uploads/')) {
-        $filePath = realpath(__DIR__ . '/' . $relPath);
-        $baseReal = realpath(__DIR__ . '/uploads');
-    } else {
-        $baseReal = realpath($driveBaseFolder);
-        $filePath = realpath($driveBaseFolder . '/' . $relPath);
-    }
-    if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
-        $mimeType = mime_content_type($filePath);
-        header("Content-Type: " . $mimeType);
-        header("Content-Length: " . filesize($filePath));
-        readfile($filePath);
-        exit;
-    }
-    http_response_code(404);
-    exit;
-}
-
 function getPhotoDateDetails(string $filePath): array
 {
     $rawDate = '';
@@ -74,6 +52,55 @@ function getPhotoDateDetails(string $filePath): array
         'real_date' => date('Y-m-d', $timestamp),
         'formatted' => "{$dayName}, {$dayNum} {$monthName} {$year}"
     ];
+}
+
+if (isset($_GET['api_action']) && $_GET['api_action'] === 'get_subfolder_photos') {
+    header('Content-Type: application/json');
+    $requestedSub = $_GET['subfolder'] ?? '';
+    $photos = [];
+    if (!empty($requestedSub)) {
+        $targetDir = realpath($driveBaseFolder . '/' . basename($requestedSub));
+        $realBase  = realpath($driveBaseFolder);
+        if ($targetDir && $realBase && str_starts_with($targetDir, $realBase) && is_dir($targetDir)) {
+            $files = glob($targetDir . '/*.{jpg,jpeg,png,JPG,JPEG,PNG}', GLOB_BRACE);
+            if ($files !== false) {
+                foreach ($files as $file) {
+                    $filename = basename($file);
+                    $dateInfo = getPhotoDateDetails($file);
+                    $photos[] = [
+                        'name'      => $filename,
+                        'rel_path'  => $requestedSub . '/' . $filename,
+                        'date'      => $dateInfo['formatted'],
+                        'real_date' => $dateInfo['real_date']
+                    ];
+                }
+            }
+        }
+    }
+    echo json_encode(['status' => 'success', 'files' => $photos]);
+    exit;
+}
+
+if (isset($_GET['get_image'])) {
+    $relPath = $_GET['get_image'];
+    $filePath = '';
+    $baseReal = '';
+    if (str_starts_with($relPath, 'uploads/')) {
+        $filePath = realpath(__DIR__ . '/' . $relPath);
+        $baseReal = realpath(__DIR__ . '/uploads');
+    } else {
+        $baseReal = realpath($driveBaseFolder);
+        $filePath = realpath($driveBaseFolder . '/' . $relPath);
+    }
+    if ($filePath && $baseReal && str_starts_with($filePath, $baseReal) && file_exists($filePath)) {
+        $mimeType = mime_content_type($filePath);
+        header("Content-Type: " . $mimeType);
+        header("Content-Length: " . filesize($filePath));
+        readfile($filePath);
+        exit;
+    }
+    http_response_code(404);
+    exit;
 }
 
 $subfolderDirs = glob($driveBaseFolder . '/*', GLOB_ONLYDIR);
@@ -195,31 +222,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $uraian           = $_POST['uraian'] ?? '';
 
         if ($editId > 0) {
-            $stmtOld = $pdo->prepare("SELECT fotos FROM tb_kegiatan WHERE id = :id");
-            $stmtOld->execute([':id' => $editId]);
-            $oldData = $stmtOld->fetch();
-            $photoPaths = json_decode($oldData['fotos'] ?? '[]', true) ?: [];
+            $photoPaths = [];
+            $stagedDriveJson = $_POST['edit_drive_photos'] ?? '[]';
+            $stagedDrive = json_decode($stagedDriveJson, true) ?: [];
 
-            if (isset($_FILES['edit_uploaded_photos']) && count($_FILES['edit_uploaded_photos']['name']) > 0 && $_FILES['edit_uploaded_photos']['error'][0] === UPLOAD_ERR_OK) {
-                $newPhotoPaths = [];
+            foreach ($stagedDrive as $relPath) {
+                if (count($photoPaths) >= 2) break;
+                if (str_starts_with($relPath, 'uploads/')) {
+                    $fullPath = realpath(__DIR__ . '/' . $relPath);
+                    $baseReal = realpath(__DIR__ . '/uploads');
+                } else {
+                    $baseReal = realpath($driveBaseFolder);
+                    $fullPath = realpath($driveBaseFolder . '/' . $relPath);
+                }
+                if ($fullPath && $baseReal && str_starts_with($fullPath, $baseReal) && file_exists($fullPath)) {
+                    $photoPaths[] = $relPath;
+                }
+            }
+
+            if (isset($_FILES['edit_uploaded_photos']) && count($_FILES['edit_uploaded_photos']['name']) > 0) {
                 $uploadDir = __DIR__ . '/uploads';
                 if (!is_dir($uploadDir)) {
                     mkdir($uploadDir, 0777, true);
                 }
                 for ($i = 0; $i < count($_FILES['edit_uploaded_photos']['name']); $i++) {
-                    if (count($newPhotoPaths) >= 2) break;
+                    if (count($photoPaths) >= 2) break;
                     if ($_FILES['edit_uploaded_photos']['error'][$i] === UPLOAD_ERR_OK) {
                         $tmpName  = $_FILES['edit_uploaded_photos']['tmp_name'][$i];
                         $origName = basename($_FILES['edit_uploaded_photos']['name'][$i]);
                         $newName  = time() . '_edit_' . $i . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $origName);
                         $targetPath = $uploadDir . '/' . $newName;
                         if (move_uploaded_file($tmpName, $targetPath)) {
-                            $newPhotoPaths[] = 'uploads/' . $newName;
+                            $photoPaths[] = 'uploads/' . $newName;
                         }
                     }
-                }
-                if (!empty($newPhotoPaths)) {
-                    $photoPaths = $newPhotoPaths;
                 }
             }
 
@@ -465,7 +501,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <input type="file" name="uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
                             </div>
 
-                            <!-- PENGUBAHAN UTAMA: Input tanggal_real dibuat kelihatan dalam layout Grid 2 Kolom -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal System/Database (Real):</label>
@@ -677,6 +712,7 @@ if (!empty($_SESSION['staged_photos'])) {
                 <form method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
                     <input type="hidden" name="action" value="edit_item">
                     <input type="hidden" name="edit_id" id="editModalId">
+                    <input type="hidden" name="edit_drive_photos" id="editDrivePhotosInput" value="[]">
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
@@ -694,13 +730,50 @@ if (!empty($_SESSION['staged_photos'])) {
                         <textarea name="uraian" id="editModalUraian" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-xs text-slate-800 leading-relaxed focus:border-slate-800 focus:outline-none" rows="4" required></textarea>
                     </div>
 
-                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-2">Foto Terpasang Saat Ini:</label>
-                        <div id="editModalExistingPhotos" class="flex gap-2 mb-3"></div>
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Pilih Folder Laporan Bulan/Tahun (Drive):</label>
+                            <select id="editSubfolderSelect" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-slate-800 focus:outline-none">
+                                <option value="">-- Pilih Folder Dokumentasi --</option>
+                                <?php foreach ($availableSubfolders as $folderName): ?>
+                                    <option value="<?= htmlspecialchars($folderName) ?>" <?= $selectedSubfolder === $folderName ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($folderName) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
 
-                        <label class="block text-xs font-medium text-slate-700 mb-1">Ganti Foto (Opsional, Maks. 2):</label>
-                        <input type="file" name="edit_uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
-                        <p class="mt-1 text-[10px] text-slate-400">*Biarkan kosong jika tidak ingin mengubah foto yang tersimpan.</p>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Berkas Foto Dari Folder Active:</label>
+                            <div class="space-y-2">
+                                <select id="editSinglePhotoSelect" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-slate-800 focus:outline-none">
+                                    <option value="">-- Pilih Berkas Gambar --</option>
+                                    <?php foreach ($scannedFiles as $sf): ?>
+                                        <option value="<?= htmlspecialchars($sf['rel_path']) ?>" data-date="<?= htmlspecialchars($sf['date']) ?>" data-real="<?= htmlspecialchars($sf['real_date']) ?>">
+                                            <?= htmlspecialchars($sf['name']) ?> (EXIF: <?= htmlspecialchars($sf['date']) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button type="button" id="btnEditAddStage" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
+                                    + Masukkan Foto Ke Daftar Edit
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar Foto Terpilih (Maks. 2)</span>
+                                <button type="button" id="btnEditResetStaged" class="text-[11px] text-rose-600 hover:text-rose-800 font-medium">Reset Pilih</button>
+                            </div>
+                            <div id="editStagedContainer" class="grid grid-cols-2 gap-2 min-h-[90px] items-center">
+                                <span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-slate-200 pt-3">
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Atau Unggah Manual Dari Perangkat (Maks. 2):</label>
+                            <input type="file" name="edit_uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
+                        </div>
                     </div>
 
                     <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
@@ -727,6 +800,7 @@ if (!empty($_SESSION['staged_photos'])) {
         const modalImageTarget = document.getElementById('modalImageTarget');
 
         const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        let editStagedPhotos = [];
 
         document.getElementById('btnToggleCustomDate')?.addEventListener('click', function() {
             const customDateDiv = document.getElementById('customDateCollapse');
@@ -768,6 +842,53 @@ if (!empty($_SESSION['staged_photos'])) {
             });
         });
 
+        function renderEditStagedPhotos() {
+            const container = document.getElementById('editStagedContainer');
+            const hiddenInput = document.getElementById('editDrivePhotosInput');
+            container.innerHTML = '';
+            hiddenInput.value = JSON.stringify(editStagedPhotos);
+
+            if (editStagedPhotos.length === 0) {
+                container.innerHTML = '<span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>';
+                return;
+            }
+
+            editStagedPhotos.forEach((path, idx) => {
+                const parts = path.split('/');
+                const fileLabel = parts[1] || path;
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-center';
+
+                const img = document.createElement('img');
+                img.src = 'index.php?get_image=' + encodeURIComponent(path);
+                img.className = 'w-full h-20 object-cover rounded mb-1.5 border border-slate-100 cursor-pointer';
+                img.addEventListener('click', function() {
+                    modalImageTarget.src = this.src;
+                    imageModal.show();
+                });
+
+                const label = document.createElement('div');
+                label.className = 'text-[10px] font-medium text-slate-700 truncate mb-1';
+                label.title = fileLabel;
+                label.textContent = fileLabel;
+
+                const btnRemove = document.createElement('button');
+                btnRemove.type = 'button';
+                btnRemove.className = 'w-full py-0.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 rounded border border-rose-200 transition';
+                btnRemove.textContent = 'Batal Pilih';
+                btnRemove.addEventListener('click', function() {
+                    editStagedPhotos.splice(idx, 1);
+                    renderEditStagedPhotos();
+                });
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(label);
+                wrapper.appendChild(btnRemove);
+                container.appendChild(wrapper);
+            });
+        }
+
         document.querySelectorAll('.btn-open-edit').forEach(btn => {
             btn.addEventListener('click', function() {
                 const id = this.getAttribute('data-id');
@@ -781,22 +902,65 @@ if (!empty($_SESSION['staged_photos'])) {
                 document.getElementById('editModalTanggalReal').value = tglReal;
                 document.getElementById('editModalUraian').value = uraian;
 
-                const photoContainer = document.getElementById('editModalExistingPhotos');
-                photoContainer.innerHTML = '';
-
-                if (fotos.length === 0) {
-                    photoContainer.innerHTML = '<span class="text-xs text-slate-400 italic">Tidak ada foto terpasang.</span>';
-                } else {
-                    fotos.forEach(path => {
-                        const img = document.createElement('img');
-                        img.src = 'index.php?get_image=' + encodeURIComponent(path);
-                        img.className = 'w-12 h-12 object-cover rounded border border-slate-200 shadow-sm';
-                        photoContainer.appendChild(img);
-                    });
-                }
+                editStagedPhotos = [...fotos];
+                renderEditStagedPhotos();
 
                 editModal.show();
             });
+        });
+
+        document.getElementById('editSubfolderSelect')?.addEventListener('change', function() {
+            const selectedSub = this.value;
+            const photoSelect = document.getElementById('editSinglePhotoSelect');
+            photoSelect.innerHTML = '<option value="">-- Loading Berkas Gambar... --</option>';
+
+            if (!selectedSub) {
+                photoSelect.innerHTML = '<option value="">-- Pilih Folder Terlebih Dahulu --</option>';
+                return;
+            }
+
+            fetch('index.php?api_action=get_subfolder_photos&subfolder=' + encodeURIComponent(selectedSub))
+                .then(response => response.json())
+                .then(data => {
+                    photoSelect.innerHTML = '<option value="">-- Pilih Berkas Gambar --</option>';
+                    if (data.status === 'success' && data.files.length > 0) {
+                        data.files.forEach(sf => {
+                            const opt = document.createElement('option');
+                            opt.value = sf.rel_path;
+                            opt.textContent = `${sf.name} (EXIF: ${sf.date})`;
+                            opt.setAttribute('data-real', sf.real_date);
+                            opt.setAttribute('data-date', sf.date);
+                            photoSelect.appendChild(opt);
+                        });
+                    } else {
+                        photoSelect.innerHTML = '<option value="">-- Tidak Ada File Foto --</option>';
+                    }
+                })
+                .catch(() => {
+                    photoSelect.innerHTML = '<option value="">-- Gagal Memuat Foto --</option>';
+                });
+        });
+
+        document.getElementById('btnEditAddStage')?.addEventListener('click', function() {
+            const select = document.getElementById('editSinglePhotoSelect');
+            const val = select.value;
+            if (!val) {
+                alert('Silakan pilih foto terlebih dahulu.');
+                return;
+            }
+            if (editStagedPhotos.length >= 2) {
+                alert('Maksimal 2 foto dalam daftar terpilih!');
+                return;
+            }
+            if (!editStagedPhotos.includes(val)) {
+                editStagedPhotos.push(val);
+                renderEditStagedPhotos();
+            }
+        });
+
+        document.getElementById('btnEditResetStaged')?.addEventListener('click', function() {
+            editStagedPhotos = [];
+            renderEditStagedPhotos();
         });
 
         document.getElementById('btnGenerateAI')?.addEventListener('click', function() {
