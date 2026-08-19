@@ -92,7 +92,7 @@ if (file_exists($logoPath)) {
             font-size: 11pt;
             color: #000;
             background-color: #fff;
-            padding: 0.8cm 1.5cm 1.5cm 1.5cm;
+            padding: 0.3cm 1.5cm 1.5cm 1.5cm;
             box-sizing: border-box;
         }
 
