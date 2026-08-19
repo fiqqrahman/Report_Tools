@@ -188,6 +188,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
 
+    if ($_POST['action'] === 'edit_item') {
+        $editId           = (int)($_POST['edit_id'] ?? 0);
+        $tanggalFormatted = $_POST['tanggal'] ?? '';
+        $tanggalReal      = $_POST['tanggal_real'] ?? date('Y-m-d');
+        $uraian           = $_POST['uraian'] ?? '';
+
+        if ($editId > 0) {
+            $stmtOld = $pdo->prepare("SELECT fotos FROM tb_kegiatan WHERE id = :id");
+            $stmtOld->execute([':id' => $editId]);
+            $oldData = $stmtOld->fetch();
+            $photoPaths = json_decode($oldData['fotos'] ?? '[]', true) ?: [];
+
+            if (isset($_FILES['edit_uploaded_photos']) && count($_FILES['edit_uploaded_photos']['name']) > 0 && $_FILES['edit_uploaded_photos']['error'][0] === UPLOAD_ERR_OK) {
+                $newPhotoPaths = [];
+                $uploadDir = __DIR__ . '/uploads';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                for ($i = 0; $i < count($_FILES['edit_uploaded_photos']['name']); $i++) {
+                    if (count($newPhotoPaths) >= 2) break;
+                    if ($_FILES['edit_uploaded_photos']['error'][$i] === UPLOAD_ERR_OK) {
+                        $tmpName  = $_FILES['edit_uploaded_photos']['tmp_name'][$i];
+                        $origName = basename($_FILES['edit_uploaded_photos']['name'][$i]);
+                        $newName  = time() . '_edit_' . $i . '_' . preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $origName);
+                        $targetPath = $uploadDir . '/' . $newName;
+                        if (move_uploaded_file($tmpName, $targetPath)) {
+                            $newPhotoPaths[] = 'uploads/' . $newName;
+                        }
+                    }
+                }
+                if (!empty($newPhotoPaths)) {
+                    $photoPaths = $newPhotoPaths;
+                }
+            }
+
+            $stmt = $pdo->prepare("UPDATE tb_kegiatan SET tanggal_real = :tgl_real, tanggal_formatted = :tgl_fmt, uraian = :uraian, fotos = :fotos WHERE id = :id");
+            $stmt->execute([
+                ':tgl_real' => $tanggalReal,
+                ':tgl_fmt'  => $tanggalFormatted,
+                ':uraian'   => $uraian,
+                ':fotos'    => json_encode($photoPaths),
+                ':id'       => $editId
+            ]);
+        }
+        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        exit;
+    }
+
     if ($_POST['action'] === 'delete_item') {
         $id = (int)($_POST['item_id'] ?? 0);
         if ($id > 0) {
@@ -258,7 +306,6 @@ if (!empty($_SESSION['staged_photos'])) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <script src="https://cdn.tailwindcss.com"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
@@ -304,7 +351,6 @@ if (!empty($_SESSION['staged_photos'])) {
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
             <div class="lg:col-span-5 flex flex-col gap-5">
-
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between h-full">
                     <div>
                         <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
@@ -540,7 +586,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <th class="p-3 w-44 border-r border-slate-200">Hari / Tanggal</th>
                                 <th class="p-3 border-r border-slate-200">Uraian Pekerjaan / Kegiatan</th>
                                 <th class="p-3 text-center w-36 border-r border-slate-200">Dokumentasi Foto</th>
-                                <th class="p-3 text-center w-20">Aksi</th>
+                                <th class="p-3 text-center w-28">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-200">
@@ -563,13 +609,23 @@ if (!empty($_SESSION['staged_photos'])) {
                                             </div>
                                         </td>
                                         <td class="p-3 text-center">
-                                            <form method="POST" onsubmit="return confirm('Hapus entri kegiatan ini?')">
-                                                <input type="hidden" name="action" value="delete_item">
-                                                <input type="hidden" name="item_id" value="<?= $log['id'] ?>">
-                                                <button type="submit" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded text-[11px] border border-rose-200 transition">
-                                                    Hapus
+                                            <div class="flex items-center justify-center gap-1">
+                                                <button type="button" class="btn-open-edit px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 font-medium rounded text-[11px] border border-amber-200 transition"
+                                                    data-id="<?= $log['id'] ?>"
+                                                    data-tgl-fmt="<?= htmlspecialchars($log['tanggal_formatted']) ?>"
+                                                    data-tgl-real="<?= htmlspecialchars($log['tanggal_real']) ?>"
+                                                    data-uraian="<?= htmlspecialchars($log['uraian']) ?>"
+                                                    data-fotos='<?= htmlspecialchars(json_encode($fotos), ENT_QUOTES) ?>'>
+                                                    Edit
                                                 </button>
-                                            </form>
+                                                <form method="POST" onsubmit="return confirm('Hapus entri kegiatan ini?')">
+                                                    <input type="hidden" name="action" value="delete_item">
+                                                    <input type="hidden" name="item_id" value="<?= $log['id'] ?>">
+                                                    <button type="submit" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-medium rounded text-[11px] border border-rose-200 transition">
+                                                        Hapus
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -600,14 +656,71 @@ if (!empty($_SESSION['staged_photos'])) {
         </div>
     </div>
 
+    <div class="modal fade fixed inset-0 z-50 justify-center items-center" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog max-w-2xl w-full mx-4">
+            <div class="bg-white rounded-xl overflow-hidden shadow-2xl border border-slate-200">
+                <div class="px-5 py-4 bg-slate-900 text-white flex justify-between items-center">
+                    <h5 class="text-xs font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Edit Entri Kegiatan Laporan
+                    </h5>
+                    <button type="button" class="text-slate-400 hover:text-white text-lg font-bold" data-bs-dismiss="modal" aria-label="Close">&times;</button>
+                </div>
+                <form method="POST" enctype="multipart/form-data" class="p-5 space-y-4">
+                    <input type="hidden" name="action" value="edit_item">
+                    <input type="hidden" name="edit_id" id="editModalId">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal System (Real):</label>
+                            <input type="date" name="tanggal_real" id="editModalTanggalReal" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-700 mb-1">Hari & Tanggal Laporan:</label>
+                            <input type="text" name="tanggal" id="editModalTanggalFmt" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Kegiatan Pekerjaan:</label>
+                        <textarea name="uraian" id="editModalUraian" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-xs text-slate-800 leading-relaxed focus:border-slate-800 focus:outline-none" rows="4" required></textarea>
+                    </div>
+
+                    <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-2">Foto Terpasang Saat Ini:</label>
+                        <div id="editModalExistingPhotos" class="flex gap-2 mb-3"></div>
+
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Ganti Foto (Opsional, Maks. 2):</label>
+                        <input type="file" name="edit_uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
+                        <p class="mt-1 text-[10px] text-slate-400">*Biarkan kosong jika tidak ingin mengubah foto yang tersimpan.</p>
+                    </div>
+
+                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-lg transition" data-bs-dismiss="modal">
+                            Batal
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg transition uppercase">
+                            Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         const singlePhotoSelect = document.getElementById('singlePhotoSelect');
         const btnAddStage = document.getElementById('btnAddStage');
         const stagePhotoForm = document.getElementById('stagePhotoForm');
         const stagePhotoRelPath = document.getElementById('stagePhotoRelPath');
         const currentStagedCount = <?= count($_SESSION['staged_photos']) ?>;
+
         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
         const modalImageTarget = document.getElementById('modalImageTarget');
+
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
 
         document.getElementById('btnToggleCustomDate')?.addEventListener('click', function() {
             const customDateDiv = document.getElementById('customDateCollapse');
@@ -646,6 +759,37 @@ if (!empty($_SESSION['staged_photos'])) {
             img.addEventListener('click', function() {
                 modalImageTarget.src = this.src;
                 imageModal.show();
+            });
+        });
+
+        document.querySelectorAll('.btn-open-edit').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const tglFmt = this.getAttribute('data-tgl-fmt');
+                const tglReal = this.getAttribute('data-tgl-real');
+                const uraian = this.getAttribute('data-uraian');
+                const fotos = JSON.parse(this.getAttribute('data-fotos') || '[]');
+
+                document.getElementById('editModalId').value = id;
+                document.getElementById('editModalTanggalFmt').value = tglFmt;
+                document.getElementById('editModalTanggalReal').value = tglReal;
+                document.getElementById('editModalUraian').value = uraian;
+
+                const photoContainer = document.getElementById('editModalExistingPhotos');
+                photoContainer.innerHTML = '';
+
+                if (fotos.length === 0) {
+                    photoContainer.innerHTML = '<span class="text-xs text-slate-400 italic">Tidak ada foto terpasang.</span>';
+                } else {
+                    fotos.forEach(path => {
+                        const img = document.createElement('img');
+                        img.src = 'index.php?get_image=' + encodeURIComponent(path);
+                        img.className = 'w-12 h-12 object-cover rounded border border-slate-200 shadow-sm';
+                        photoContainer.appendChild(img);
+                    });
+                }
+
+                editModal.show();
             });
         });
 
