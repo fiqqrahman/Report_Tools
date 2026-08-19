@@ -459,18 +459,24 @@ if (!empty($_SESSION['staged_photos'])) {
 
                         <form method="POST" enctype="multipart/form-data" class="space-y-4">
                             <input type="hidden" name="action" value="add">
-                            <input type="hidden" name="tanggal_real" id="tanggalRealInput" value="<?= htmlspecialchars($latestEXIFReal) ?>">
 
                             <div>
                                 <label class="block text-xs font-medium text-slate-700 mb-1">Opsional: Unggah Foto Manual</label>
                                 <input type="file" name="uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
                             </div>
 
-                            <div>
-                                <label class="block text-xs font-medium text-slate-700 mb-1">Hari & Tanggal Pelaksanaan:</label>
-                                <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Hari, Tgl Bln Thn" required>
-                                <p class="mt-1 text-[11px] text-slate-400">Terisi otomatis sesuai tanggal berkas foto yang dipilih, namun dapat disesuaikan manual.</p>
+                            <!-- PENGUBAHAN UTAMA: Input tanggal_real dibuat kelihatan dalam layout Grid 2 Kolom -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal System/Database (Real):</label>
+                                    <input type="date" name="tanggal_real" id="tanggalRealInput" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFReal) ?>" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-700 mb-1">Hari & Tanggal Laporan (Teks):</label>
+                                    <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 28 Juli 2026" required>
+                                </div>
                             </div>
+                            <p class="text-[11px] text-slate-400 -mt-2">*Pastikan Tanggal System (Real) terisi sesuai tanggal target (misal: 2026-07-28) agar lolos filter query SQL.</p>
 
                             <div>
                                 <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Pekerjaan / Kegiatan Harian:</label>
