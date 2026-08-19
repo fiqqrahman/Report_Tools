@@ -82,24 +82,34 @@ if (file_exists($logoPath)) {
     <meta charset="utf-8">
     <title></title>
     <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
         @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 1.0cm 1.2cm 1.2cm 1.2cm;
+        }
+
+        @page :first {
+            margin-top: 0.4cm;
         }
 
         body {
             font-family: 'Arial', sans-serif;
-            font-size: 11pt;
+            font-size: 10pt;
             color: #000;
             background-color: #fff;
-            padding: 0.3cm 1.5cm 1.5cm 1.5cm;
-            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
         }
 
         .kop-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 2px;
+            margin-bottom: 0px;
         }
 
         .kop-table td {
@@ -109,42 +119,61 @@ if (file_exists($logoPath)) {
         }
 
         .line-double {
-            border-bottom: 4px solid #000;
-            margin-bottom: 12px;
-            margin-top: 4px;
+            border-bottom: 3px solid #000;
+            margin-bottom: 8px;
+            margin-top: 2px;
         }
 
         .title {
             text-align: center;
             font-weight: bold;
-            font-size: 12pt;
-            margin-bottom: 12px;
-            line-height: 1.3;
+            font-size: 11pt;
+            margin-bottom: 8px;
+            line-height: 1.2;
         }
 
         .biodata-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
         .biodata-table td {
             border: none;
-            padding: 2px 0;
+            padding: 1px 0;
             vertical-align: top;
-            font-size: 11pt;
+            font-size: 10pt;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            padding-right: 5px;
+            padding-left: 2px;
         }
 
         .main-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .main-table thead {
+            display: table-row-group;
         }
 
         .main-table th,
         .main-table td {
             border: 1px solid #000;
-            padding: 6px;
+            padding: 4px 5px;
             vertical-align: middle;
+            font-size: 9.5pt;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .main-table th:last-child,
+        .main-table td:last-child {
+            border-right: 1.5px solid #000 !important;
         }
 
         .main-table th {
@@ -153,30 +182,40 @@ if (file_exists($logoPath)) {
             font-weight: bold;
         }
 
+        .main-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
         .ttd-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 25px;
+            margin-top: 20px;
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
 
         .ttd-table td {
             border: none;
             text-align: center;
             vertical-align: top;
+            font-size: 10pt;
         }
 
         .img-cell {
             text-align: center;
             vertical-align: middle;
-            padding: 6px !important;
+            padding: 3px !important;
         }
 
         .img-kegiatan {
-            height: 3.7cm !important;
+            max-height: 2.5cm !important;
+            max-width: 100% !important;
             width: auto !important;
-            max-width: 100%;
+            height: auto !important;
             display: block;
-            margin: 4px auto;
+            margin: 2px auto;
+            object-fit: contain;
         }
 
         @media print {
@@ -234,57 +273,59 @@ if (file_exists($logoPath)) {
         </tr>
     </table>
 
-    <table class="main-table">
-        <thead>
-            <tr>
-                <th style="width: 5%;">No</th>
-                <th style="width: 25%;">Hari / Tanggal</th>
-                <th style="width: 45%;">Uraian Kegiatan</th>
-                <th style="width: 25%;">Foto Kegiatan</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (empty($logsList)): ?>
+    <div class="table-wrapper">
+        <table class="main-table">
+            <thead>
                 <tr>
-                    <td colspan="4" style="text-align:center;">Belum ada data kegiatan pada periode ini.</td>
+                    <th style="width: 6%;">No</th>
+                    <th style="width: 22%;">Hari / Tanggal</th>
+                    <th style="width: 44%;">Uraian Kegiatan</th>
+                    <th style="width: 28%;">Foto Kegiatan</th>
                 </tr>
-            <?php else: ?>
-                <?php foreach ($logsList as $i => $log): ?>
-                    <?php $fotos = json_decode($log['fotos'], true) ?: []; ?>
+            </thead>
+            <tbody>
+                <?php if (empty($logsList)): ?>
                     <tr>
-                        <td style="text-align: center;"><?= $i + 1 ?></td>
-                        <td><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
-                        <td><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
-                        <td class="img-cell">
-                            <?php foreach ($fotos as $relPath): ?>
-                                <?php
-                                $physPath = getPhysicalPath($relPath, $driveBaseFolder);
-                                if (!empty($physPath)):
-                                    $mimeType = mime_content_type($physPath);
-                                    $imgBase64 = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($physPath));
-                                ?>
-                                    <img src="<?= $imgBase64 ?>" class="img-kegiatan">
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </td>
+                        <td colspan="4" style="text-align:center;">Belum ada data kegiatan pada periode ini.</td>
                     </tr>
-                <?php endforeach; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
+                <?php else: ?>
+                    <?php foreach ($logsList as $i => $log): ?>
+                        <?php $fotos = json_decode($log['fotos'], true) ?: []; ?>
+                        <tr>
+                            <td style="text-align: center;"><?= $i + 1 ?></td>
+                            <td><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
+                            <td><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
+                            <td class="img-cell">
+                                <?php foreach ($fotos as $relPath): ?>
+                                    <?php
+                                    $physPath = getPhysicalPath($relPath, $driveBaseFolder);
+                                    if (!empty($physPath)):
+                                        $mimeType = mime_content_type($physPath);
+                                        $imgBase64 = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($physPath));
+                                    ?>
+                                        <img src="<?= $imgBase64 ?>" class="img-kegiatan">
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
 
     <table class="ttd-table">
         <tr>
             <td style="width: 50%;">
                 Mengetahui,<br>
                 Kepala Sub Bagian Umum dan Kepegawaian<br>Dinas Pendidikan Kota Palangka Raya<br><br><br><br><br>
-                <b><u>Lenataurisia P., S.T., M.A.P</u></b><br>
+                <b>Lenataurisia P., S.T., M.A.P</b><br>
                 NIP 198204282010012013
             </td>
             <td style="width: 50%;">
                 <br>
                 Yang Melapor,<br><br><br><br><br><br>
-                <b><u>Taufiqurahman, S.Kom</u></b>
+                <b>Taufiqurahman, S.Kom</b>
             </td>
         </tr>
     </table>
