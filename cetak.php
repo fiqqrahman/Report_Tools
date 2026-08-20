@@ -212,14 +212,13 @@ if (file_exists($logoPath)) {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             width: 100%;
         }
 
         .img-kegiatan {
-            max-height: 5.0cm !important;
-            max-width: 48% !important;
-            width: auto !important;
+            width: calc(50% - 3px) !important;
+            max-height: 5.8cm !important;
             height: auto !important;
             object-fit: contain;
             display: block;
