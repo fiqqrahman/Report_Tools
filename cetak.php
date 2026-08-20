@@ -88,11 +88,13 @@ if (file_exists($logoPath)) {
             box-sizing: border-box;
         }
 
+        /* MARGIN STANDAR UNTUK HALAMAN 2 DAN SETERUSNYA (Dinaikkan ke 1.8cm) */
         @page {
             size: A4 portrait;
-            margin: 1.0cm 1.2cm 1.2cm 1.2cm;
+            margin: 1.8cm 1.2cm 1.2cm 1.2cm;
         }
 
+        /* KHUSUS HALAMAN 1 (Kop Surat tetap rapat atas) */
         @page :first {
             margin-top: 0.4cm;
         }
