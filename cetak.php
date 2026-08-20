@@ -285,8 +285,8 @@ if (file_exists($logoPath)) {
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
-                    <th style="width: 17%;">Hari / Tanggal</th>
-                    <th style="width: 28%;">Uraian Kegiatan</th>
+                    <th style="width: 22%;">Hari / Tanggal</th>
+                    <th style="width: 23%;">Uraian Kegiatan</th>
                     <th style="width: 50%;">Foto Kegiatan</th>
                 </tr>
             </thead>
