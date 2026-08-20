@@ -396,7 +396,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </svg>
                                 1. Sumber Media/lampiran
                             </h2>
-                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Media Attachment</span>
+                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">MEDIA ATTACHMENT</span>
                         </div>
 
                         <div class="mb-4">
@@ -490,7 +490,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </svg>
                                 2. Detail & Uraian Kegiatan Laporan
                             </h2>
-                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Form Entry</span>
+                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">FORM ENTRY</span>
                         </div>
 
                         <form method="POST" enctype="multipart/form-data" class="space-y-4">
