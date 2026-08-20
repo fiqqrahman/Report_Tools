@@ -205,17 +205,24 @@ if (file_exists($logoPath)) {
         .img-cell {
             text-align: center;
             vertical-align: middle;
-            padding: 3px !important;
+            padding: 4px !important;
+        }
+
+        .img-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
         }
 
         .img-kegiatan {
-            max-height: 2.5cm !important;
-            max-width: 100% !important;
+            max-height: 3.5cm !important;
+            max-width: 48% !important;
             width: auto !important;
             height: auto !important;
-            display: block;
-            margin: 2px auto;
             object-fit: contain;
+            display: block;
         }
 
         @media print {
@@ -277,10 +284,10 @@ if (file_exists($logoPath)) {
         <table class="main-table">
             <thead>
                 <tr>
-                    <th style="width: 6%;">No</th>
-                    <th style="width: 22%;">Hari / Tanggal</th>
-                    <th style="width: 44%;">Uraian Kegiatan</th>
-                    <th style="width: 28%;">Foto Kegiatan</th>
+                    <th style="width: 5%;">No</th>
+                    <th style="width: 20%;">Hari / Tanggal</th>
+                    <th style="width: 35%;">Uraian Kegiatan</th>
+                    <th style="width: 40%;">Foto Kegiatan</th>
                 </tr>
             </thead>
             <tbody>
@@ -296,16 +303,18 @@ if (file_exists($logoPath)) {
                             <td><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
                             <td><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
                             <td class="img-cell">
-                                <?php foreach ($fotos as $relPath): ?>
-                                    <?php
-                                    $physPath = getPhysicalPath($relPath, $driveBaseFolder);
-                                    if (!empty($physPath)):
-                                        $mimeType = mime_content_type($physPath);
-                                        $imgBase64 = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($physPath));
-                                    ?>
-                                        <img src="<?= $imgBase64 ?>" class="img-kegiatan">
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
+                                <div class="img-container">
+                                    <?php foreach ($fotos as $relPath): ?>
+                                        <?php
+                                        $physPath = getPhysicalPath($relPath, $driveBaseFolder);
+                                        if (!empty($physPath)):
+                                            $mimeType = mime_content_type($physPath);
+                                            $imgBase64 = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($physPath));
+                                        ?>
+                                            <img src="<?= $imgBase64 ?>" class="img-kegiatan">
+                                        <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
