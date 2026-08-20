@@ -217,7 +217,7 @@ if (file_exists($logoPath)) {
         }
 
         .img-kegiatan {
-            max-height: 3.5cm !important;
+            max-height: 5.0cm !important;
             max-width: 48% !important;
             width: auto !important;
             height: auto !important;
@@ -285,9 +285,9 @@ if (file_exists($logoPath)) {
             <thead>
                 <tr>
                     <th style="width: 5%;">No</th>
-                    <th style="width: 20%;">Hari / Tanggal</th>
-                    <th style="width: 35%;">Uraian Kegiatan</th>
-                    <th style="width: 40%;">Foto Kegiatan</th>
+                    <th style="width: 17%;">Hari / Tanggal</th>
+                    <th style="width: 28%;">Uraian Kegiatan</th>
+                    <th style="width: 50%;">Foto Kegiatan</th>
                 </tr>
             </thead>
             <tbody>
