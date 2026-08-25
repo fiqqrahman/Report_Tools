@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/config.php';
 
+// PERBAIKAN 1: Matikan display_errors agar warning/deprecation PHP tidak merusak JSON frontend
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -17,7 +21,7 @@ if (empty($keywords)) {
     exit;
 }
 
-$systemPrompt = "Antum adalah asisten penulisan laporan harian kedinasan Tenaga Layanan Umum Dinas Pendidikan Kota Palangka Raya. Tugas antum: Ubah kata kunci kegiatan menjadi 1 sampai 2 kalimat ringkas, formal, dan fokus pada tindakan teknis atau operasional utama. Dilarang menambah kalimat templat seperti pelaporan ke atasan, pertanggungjawaban tugas, kata pengantar, atau penutup. Langsung hasilkan teks uraian kegiatan.";
+$systemPrompt = "Ubah kata kunci kegiatan menjadi 1 sampai 2 kalimat ringkas, formal, dan fokus pada tindakan teknis atau operasional utama untuk laporan harian kedinasan. Langsung hasilkan teks uraian kegiatan tanpa kalimat pembuka atau penutup.";
 
 $payload = [
     'contents' => [
@@ -29,54 +33,51 @@ $payload = [
     ]
 ];
 
-$cleanApiKey = trim(GEMINI_API_KEY);
-$endpoint    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash-lite:generateContent?key=' . $cleanApiKey;
+$apiKey = trim(GEMINI_API_KEY);
+// Endpoint yang terbukti berhasil di environment antum
+$endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=' . $apiKey;
 
 $ch = curl_init($endpoint);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+curl_setopt_array($ch, [
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_POST           => true,
+    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+    CURLOPT_POSTFIELDS     => json_encode($payload),
+    CURLOPT_TIMEOUT        => 20,
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_SSL_VERIFYHOST => 0
+]);
 
 $response  = curl_exec($ch);
 $httpCode  = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $curlError = curl_error($ch);
-curl_close($ch);
 
-if ($httpCode === 200 && $response) {
-    $responseData = json_decode($response, true);
+// PERBAIKAN 2: curl_close($ch) DIHAPUS karena deprecated di PHP 8.5+
 
-    $generatedText = '';
-    if (isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
-        $generatedText = $responseData['candidates'][0]['content']['parts'][0]['text'];
-    } elseif (isset($responseData['output_text'])) {
-        $generatedText = $responseData['output_text'];
-    } elseif (isset($responseData['text'])) {
-        $generatedText = $responseData['text'];
-    }
-
-    $generatedText = trim($generatedText);
-
-    if (!empty($generatedText)) {
-        echo json_encode([
-            'status' => 'success',
-            'text'   => $generatedText
-        ]);
-    } else {
-        http_response_code(500);
-        echo json_encode([
-            'status'  => 'error',
-            'message' => 'Respon API kosong atau format JSON tidak terurai.',
-            'raw'     => $response
-        ]);
-    }
-} else {
+if ($curlError) {
     http_response_code(500);
     echo json_encode([
         'status'  => 'error',
-        'message' => 'Gagal memproses ke Gemini API (HTTP ' . $httpCode . '): ' . ($curlError ?: $response)
+        'message' => 'cURL Error: ' . $curlError
+    ]);
+    exit;
+}
+
+$responseData = json_decode($response, true);
+
+if ($httpCode === 200 && isset($responseData['candidates'][0]['content']['parts'][0]['text'])) {
+    $generatedText = trim($responseData['candidates'][0]['content']['parts'][0]['text']);
+
+    // Output Murni JSON tanpa gangguan HTML warning
+    echo json_encode([
+        'status' => 'success',
+        'text'   => $generatedText
+    ]);
+} else {
+    http_response_code($httpCode ?: 500);
+    $errorMessage = $responseData['error']['message'] ?? 'Gagal memproses respon dari Gemini API.';
+    echo json_encode([
+        'status'  => 'error',
+        'message' => 'API Error (HTTP ' . $httpCode . '): ' . $errorMessage
     ]);
 }
