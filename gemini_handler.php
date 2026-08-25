@@ -30,7 +30,7 @@ $payload = [
 ];
 
 $cleanApiKey = trim(GEMINI_API_KEY);
-$endpoint    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=' . $cleanApiKey;
+$endpoint    = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash-lite:generateContent?key=' . $cleanApiKey;
 
 $ch = curl_init($endpoint);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
