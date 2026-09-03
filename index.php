@@ -336,6 +336,8 @@ if (!empty($_SESSION['staged_photos'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Laporan Harian PJLP - Dinas Pendidikan</title>
+    <!-- Favicon Logo Dinas Pendidikan -->
+    <link rel="icon" type="image/png" href="logo.png?v=<?= filemtime(__DIR__ . '/logo.png') ?>">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
