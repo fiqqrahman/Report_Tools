@@ -643,11 +643,26 @@ if (!empty($_SESSION['staged_photos'])) {
                                         <td class="p-3 font-semibold text-slate-800 border-r border-slate-200"><?= htmlspecialchars($log['tanggal_formatted']) ?></td>
                                         <td class="p-3 leading-relaxed text-slate-700 border-r border-slate-200"><?= nl2br(htmlspecialchars($log['uraian'])) ?></td>
                                         <td class="p-3 text-center border-r border-slate-200">
-                                            <div class="flex flex-wrap gap-1 justify-center">
-                                                <?php foreach ($fotos as $relPath): ?>
-                                                    <img src="index.php?get_image=<?= urlencode($relPath) ?>" class="w-10 h-10 object-cover rounded border border-slate-200 hover:scale-110 transition zoomable-img cursor-pointer">
-                                                <?php endforeach; ?>
-                                            </div>
+                                            <?php
+                                            $jumlahFoto = count($fotos);
+                                            if ($jumlahFoto === 1): ?>
+                                                <span class="inline-flex items-center justify-center text-amber-500 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full font-bold text-xs gap-1" title="1 Foto Terlampir">
+                                                    <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </span>
+                                            <?php elseif ($jumlahFoto >= 2): ?>
+                                                <span class="inline-flex items-center justify-center text-emerald-600 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full font-bold text-xs gap-0.5" title="2 Foto Terlampir">
+                                                    <svg class="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                    <svg class="w-4 h-4 stroke-[3] -ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                                                    </svg>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="text-slate-300 font-medium text-xs">-</span>
+                                            <?php endif; ?>
                                         </td>
                                         <td class="p-3 text-center">
                                             <div class="flex items-center justify-center gap-1">
