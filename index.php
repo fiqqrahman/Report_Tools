@@ -375,7 +375,7 @@ if (!empty($_SESSION['staged_photos'])) {
                     <img src="logo.png" alt="Logo Dinas Pendidikan" class="max-h-full max-w-full object-contain">
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-slate-900 tracking-tight">PORTAL LAPORAN HARIAN PJLP</h1>
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight">PJLP DAILY REPORT TOOLS</h1>
                     <p class="text-xs font-medium text-slate-500">Dinas Pendidikan Kota Palangka Raya</p>
                 </div>
             </div>
@@ -398,7 +398,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </svg>
                                 1. Sumber Media/lampiran
                             </h2>
-                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">MEDIA ATTACHMENT</span>
                         </div>
 
                         <div class="mb-4">
@@ -492,7 +491,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </svg>
                                 2. Detail & Uraian Kegiatan Laporan
                             </h2>
-                            <span class="text-[10px] font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">FORM ENTRY</span>
                         </div>
 
                         <form method="POST" enctype="multipart/form-data" class="space-y-4">
@@ -530,7 +528,7 @@ if (!empty($_SESSION['staged_photos'])) {
                             </div>
 
                             <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg shadow-sm transition duration-150 tracking-wide uppercase">
-                                Simpan Entri Laporan Harian
+                                Submit
                             </button>
                         </form>
                     </div>
