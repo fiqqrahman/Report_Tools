@@ -14,7 +14,28 @@ if (!isset($_SESSION['staged_photos'])) {
     $_SESSION['staged_photos'] = [];
 }
 
+// 1. TANGKAP PARAMETER FILTER & STATE URL
 $selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
+$startMonthInput   = (int)($_GET['start_month'] ?? 8);
+$endMonthInput     = (int)($_GET['end_month'] ?? 9);
+$filterYear        = (int)($_GET['filter_year'] ?? date('Y'));
+$startDateInput    = $_GET['start_date'] ?? '';
+$endDateInput      = $_GET['end_date'] ?? '';
+
+// Helper untuk membangun URL Redirect dinamis agar filter tidak ter-reset
+function buildRedirectUrl(array $extraParams = []): string
+{
+    $params = [];
+    if (isset($_GET['subfolder'])) $params['subfolder'] = $_GET['subfolder'];
+    if (isset($_GET['start_month'])) $params['start_month'] = $_GET['start_month'];
+    if (isset($_GET['end_month'])) $params['end_month'] = $_GET['end_month'];
+    if (isset($_GET['filter_year'])) $params['filter_year'] = $_GET['filter_year'];
+    if (isset($_GET['start_date'])) $params['start_date'] = $_GET['start_date'];
+    if (isset($_GET['end_date'])) $params['end_date'] = $_GET['end_date'];
+
+    $merged = array_merge($params, $extraParams);
+    return 'index.php?' . http_build_query($merged);
+}
 
 function getPhotoDateDetails(string $filePath): array
 {
@@ -54,6 +75,7 @@ function getPhotoDateDetails(string $filePath): array
     ];
 }
 
+// Endpoint AJAX Fetch Gambar Subfolder
 if (isset($_GET['api_action']) && $_GET['api_action'] === 'get_subfolder_photos') {
     header('Content-Type: application/json');
     $requestedSub = $_GET['subfolder'] ?? '';
@@ -81,6 +103,7 @@ if (isset($_GET['api_action']) && $_GET['api_action'] === 'get_subfolder_photos'
     exit;
 }
 
+// Endpoint Serve Gambar
 if (isset($_GET['get_image'])) {
     $relPath = $_GET['get_image'];
     $filePath = '';
@@ -103,6 +126,7 @@ if (isset($_GET['get_image'])) {
     exit;
 }
 
+// Load Subfolder List
 $subfolderDirs = glob($driveBaseFolder . '/*', GLOB_ONLYDIR);
 $availableSubfolders = [];
 if ($subfolderDirs !== false) {
@@ -141,6 +165,7 @@ if (!empty($selectedSubfolder)) {
     }
 }
 
+// 2. FORM ACTION POST HANDLER (PRESERVING FILTER)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'stage_photo') {
         $photoRelPath = $_POST['photo_rel_path'] ?? '';
@@ -153,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
         }
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 
@@ -162,13 +187,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (isset($_SESSION['staged_photos'][$index])) {
             array_splice($_SESSION['staged_photos'], $index, 1);
         }
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 
     if ($_POST['action'] === 'clear_staged') {
         $_SESSION['staged_photos'] = [];
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 
@@ -176,8 +201,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $tanggalFormatted = $_POST['tanggal'] ?? '';
         $tanggalReal      = $_POST['tanggal_real'] ?? date('Y-m-d');
         $uraian           = $_POST['uraian'] ?? '';
+        $photoPaths       = [];
 
-        $photoPaths = [];
         foreach ($_SESSION['staged_photos'] as $relPath) {
             if (count($photoPaths) >= 2) break;
             $photoPaths[] = $relPath;
@@ -211,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         ]);
 
         $_SESSION['staged_photos'] = [];
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 
@@ -268,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ':id'       => $editId
             ]);
         }
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 
@@ -278,11 +303,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $stmt = $pdo->prepare("DELETE FROM tb_kegiatan WHERE id = :id");
             $stmt->execute([':id' => $id]);
         }
-        header("Location: index.php?subfolder=" . urlencode($selectedSubfolder));
+        header("Location: " . buildRedirectUrl());
         exit;
     }
 }
 
+// 3. HITUNG DATE RANGE FILTER
 $months = [
     1 => 'Januari',
     'Februari',
@@ -297,13 +323,6 @@ $months = [
     'November',
     'Desember'
 ];
-
-$startMonthInput = (int)($_GET['start_month'] ?? 8);
-$endMonthInput   = (int)($_GET['end_month'] ?? 9);
-$filterYear      = (int)($_GET['filter_year'] ?? date('Y'));
-
-$startDateInput  = $_GET['start_date'] ?? '';
-$endDateInput    = $_GET['end_date'] ?? '';
 
 if (!empty($startDateInput) && !empty($endDateInput)) {
     $startDate = $startDateInput;
@@ -336,16 +355,12 @@ if (!empty($_SESSION['staged_photos'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Laporan Harian PJLP - Dinas Pendidikan</title>
-    <!-- Favicon Logo Dinas Pendidikan -->
     <link rel="icon" type="image/png" href="logo.png?v=<?= filemtime(__DIR__ . '/logo.png') ?>">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -368,7 +383,6 @@ if (!empty($_SESSION['staged_photos'])) {
 
 <body class="bg-slate-100/70 text-slate-800 antialiased min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-
         <header class="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div class="flex items-center gap-4">
                 <div class="w-12 h-12 flex items-center justify-center shrink-0">
@@ -399,10 +413,20 @@ if (!empty($_SESSION['staged_photos'])) {
                                 1. Sumber Media/lampiran
                             </h2>
                         </div>
-
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Folder Laporan Bulan/Tahun:</label>
                             <form method="GET" id="subfolderForm">
+                                <!-- Pass-through parameter filter agar tidak hilang saat berpindah folder -->
+                                <?php if (!empty($startDateInput)): ?>
+                                    <input type="hidden" name="start_date" value="<?= htmlspecialchars($startDateInput) ?>">
+                                <?php endif; ?>
+                                <?php if (!empty($endDateInput)): ?>
+                                    <input type="hidden" name="end_date" value="<?= htmlspecialchars($endDateInput) ?>">
+                                <?php endif; ?>
+                                <input type="hidden" name="start_month" value="<?= $startMonthInput ?>">
+                                <input type="hidden" name="end_month" value="<?= $endMonthInput ?>">
+                                <input type="hidden" name="filter_year" value="<?= $filterYear ?>">
+
                                 <select name="subfolder" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" onchange="document.getElementById('subfolderForm').submit()">
                                     <option value="">-- Pilih Folder Dokumentasi --</option>
                                     <?php foreach ($availableSubfolders as $folderName): ?>
@@ -413,7 +437,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </select>
                             </form>
                         </div>
-
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Berkas Foto Dari Folder Active:</label>
                             <?php if (empty($selectedSubfolder)): ?>
@@ -441,7 +464,6 @@ if (!empty($_SESSION['staged_photos'])) {
                             <?php endif; ?>
                         </div>
                     </div>
-
                     <div class="border border-slate-200 rounded-lg p-3 bg-slate-50/50 mt-2">
                         <div class="flex justify-between items-center mb-2.5">
                             <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar Foto Terpilih (Maks. 2)</span>
@@ -452,7 +474,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </form>
                             <?php endif; ?>
                         </div>
-
                         <div id="stagedContainer" class="grid grid-cols-2 gap-2 min-h-[90px] items-center">
                             <?php if (empty($_SESSION['staged_photos'])): ?>
                                 <span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>
@@ -460,7 +481,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <?php foreach ($_SESSION['staged_photos'] as $idx => $relPath): ?>
                                     <?php
                                     $parts = explode('/', $relPath);
-                                    $folderLabel = $parts[0] ?? '';
                                     $fileLabel = $parts[1] ?? $relPath;
                                     ?>
                                     <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-center">
@@ -492,15 +512,12 @@ if (!empty($_SESSION['staged_photos'])) {
                                 2. Detail & Uraian Kegiatan Laporan
                             </h2>
                         </div>
-
                         <form method="POST" enctype="multipart/form-data" class="space-y-4">
                             <input type="hidden" name="action" value="add">
-
                             <div>
                                 <label class="block text-xs font-medium text-slate-700 mb-1">Opsional: Unggah Foto Manual</label>
                                 <input type="file" name="uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
                             </div>
-
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal System/Database (Real):</label>
@@ -511,8 +528,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                     <input type="text" name="tanggal" id="tanggalInput" class="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" value="<?= htmlspecialchars($latestEXIFDate) ?>" placeholder="Contoh: Selasa, 28 Juli 2026" required>
                                 </div>
                             </div>
-                            <p class="text-[11px] text-slate-400 -mt-2">*Pastikan Tanggal System (Real) terisi sesuai tanggal target (misal: 2026-07-28) agar lolos filter query SQL.</p>
-
+                            <p class="text-[11px] text-slate-400 -mt-2">*Pastikan Tanggal System (Real) terisi sesuai tanggal target agar lolos filter query SQL.</p>
                             <div>
                                 <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Pekerjaan / Kegiatan Harian:</label>
                                 <div class="flex gap-2 mb-2">
@@ -526,7 +542,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </div>
                                 <textarea name="uraian" id="uraianInput" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-xs text-slate-800 leading-relaxed shadow-sm focus:border-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-800" rows="4" placeholder="Uraian formal pekerjaan akan tampil di sini..." required></textarea>
                             </div>
-
                             <button type="submit" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg shadow-sm transition duration-150 tracking-wide uppercase">
                                 Submit
                             </button>
@@ -548,11 +563,9 @@ if (!empty($_SESSION['staged_photos'])) {
                     Periode: <span class="text-white font-medium"><?= date('d/m/Y', strtotime($startDate)) ?></span> s.d. <span class="text-white font-medium"><?= date('d/m/Y', strtotime($endDate)) ?></span>
                 </div>
             </div>
-
             <div class="p-6">
                 <form method="GET" class="mb-6 space-y-3">
                     <input type="hidden" name="subfolder" value="<?= htmlspecialchars($selectedSubfolder) ?>">
-
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 items-end">
                         <div class="lg:col-span-3">
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Bulan Awal Cut-Off:</label>
@@ -562,7 +575,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div class="lg:col-span-3">
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Bulan Akhir Cut-Off:</label>
                             <select name="end_month" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none">
@@ -571,25 +583,21 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div class="lg:col-span-2">
                             <label class="block text-[11px] font-semibold text-slate-600 mb-1">Tahun:</label>
                             <input type="number" name="filter_year" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none" value="<?= $filterYear ?>">
                         </div>
-
                         <div class="lg:col-span-2">
                             <button type="submit" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
                                 Filter Periode
                             </button>
                         </div>
-
                         <div class="lg:col-span-2">
                             <button type="button" id="btnToggleCustomDate" class="w-full py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-xs rounded-lg transition">
                                 Custom Tanggal
                             </button>
                         </div>
                     </div>
-
                     <div id="customDateCollapse" class="<?= (!empty($startDateInput) && !empty($endDateInput)) ? '' : 'hidden' ?>">
                         <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-3 items-end mt-3">
                             <div class="sm:col-span-2">
@@ -728,7 +736,6 @@ if (!empty($_SESSION['staged_photos'])) {
                     <input type="hidden" name="action" value="edit_item">
                     <input type="hidden" name="edit_id" id="editModalId">
                     <input type="hidden" name="edit_drive_photos" id="editDrivePhotosInput" value="[]">
-
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-700 mb-1">Tanggal System (Real):</label>
@@ -739,12 +746,10 @@ if (!empty($_SESSION['staged_photos'])) {
                             <input type="text" name="tanggal" id="editModalTanggalFmt" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" required>
                         </div>
                     </div>
-
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Uraian Kegiatan Pekerjaan:</label>
                         <textarea name="uraian" id="editModalUraian" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-xs text-slate-800 leading-relaxed focus:border-slate-800 focus:outline-none" rows="4" required></textarea>
                     </div>
-
                     <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
                         <div>
                             <label class="block text-xs font-medium text-slate-700 mb-1">Pilih Folder Laporan Bulan/Tahun (Drive):</label>
@@ -757,7 +762,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
                         <div>
                             <label class="block text-xs font-medium text-slate-700 mb-1.5">Pilih Berkas Foto Dari Folder Active:</label>
                             <div class="space-y-2">
@@ -774,7 +778,6 @@ if (!empty($_SESSION['staged_photos'])) {
                                 </button>
                             </div>
                         </div>
-
                         <div class="border-t border-slate-200 pt-3">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-[11px] font-bold uppercase tracking-wider text-slate-600">Daftar Foto Terpilih (Maks. 2)</span>
@@ -784,13 +787,11 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>
                             </div>
                         </div>
-
                         <div class="border-t border-slate-200 pt-3">
                             <label class="block text-xs font-medium text-slate-700 mb-1">Atau Unggah Manual Dari Perangkat (Maks. 2):</label>
                             <input type="file" name="edit_uploaded_photos[]" class="w-full text-xs text-slate-500 file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-200 file:text-slate-700 hover:file:bg-slate-300 border border-slate-200 rounded-lg cursor-pointer bg-white" accept="image/*" multiple>
                         </div>
                     </div>
-
                     <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
                         <button type="button" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs rounded-lg transition" data-bs-dismiss="modal">
                             Batal
@@ -810,10 +811,8 @@ if (!empty($_SESSION['staged_photos'])) {
         const stagePhotoForm = document.getElementById('stagePhotoForm');
         const stagePhotoRelPath = document.getElementById('stagePhotoRelPath');
         const currentStagedCount = <?= count($_SESSION['staged_photos']) ?>;
-
         const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
         const modalImageTarget = document.getElementById('modalImageTarget');
-
         const editModal = new bootstrap.Modal(document.getElementById('editModal'));
         let editStagedPhotos = [];
 
@@ -862,19 +861,15 @@ if (!empty($_SESSION['staged_photos'])) {
             const hiddenInput = document.getElementById('editDrivePhotosInput');
             container.innerHTML = '';
             hiddenInput.value = JSON.stringify(editStagedPhotos);
-
             if (editStagedPhotos.length === 0) {
                 container.innerHTML = '<span class="col-span-2 text-slate-400 text-xs text-center py-4 italic">Belum ada foto terpilih.</span>';
                 return;
             }
-
             editStagedPhotos.forEach((path, idx) => {
                 const parts = path.split('/');
                 const fileLabel = parts[1] || path;
-
                 const wrapper = document.createElement('div');
                 wrapper.className = 'bg-white border border-slate-200 rounded-lg p-2 shadow-sm text-center';
-
                 const img = document.createElement('img');
                 img.src = 'index.php?get_image=' + encodeURIComponent(path);
                 img.className = 'w-full h-20 object-cover rounded mb-1.5 border border-slate-100 cursor-pointer';
@@ -882,12 +877,10 @@ if (!empty($_SESSION['staged_photos'])) {
                     modalImageTarget.src = this.src;
                     imageModal.show();
                 });
-
                 const label = document.createElement('div');
                 label.className = 'text-[10px] font-medium text-slate-700 truncate mb-1';
                 label.title = fileLabel;
                 label.textContent = fileLabel;
-
                 const btnRemove = document.createElement('button');
                 btnRemove.type = 'button';
                 btnRemove.className = 'w-full py-0.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 rounded border border-rose-200 transition';
@@ -896,7 +889,6 @@ if (!empty($_SESSION['staged_photos'])) {
                     editStagedPhotos.splice(idx, 1);
                     renderEditStagedPhotos();
                 });
-
                 wrapper.appendChild(img);
                 wrapper.appendChild(label);
                 wrapper.appendChild(btnRemove);
@@ -911,15 +903,12 @@ if (!empty($_SESSION['staged_photos'])) {
                 const tglReal = this.getAttribute('data-tgl-real');
                 const uraian = this.getAttribute('data-uraian');
                 const fotos = JSON.parse(this.getAttribute('data-fotos') || '[]');
-
                 document.getElementById('editModalId').value = id;
                 document.getElementById('editModalTanggalFmt').value = tglFmt;
                 document.getElementById('editModalTanggalReal').value = tglReal;
                 document.getElementById('editModalUraian').value = uraian;
-
                 editStagedPhotos = [...fotos];
                 renderEditStagedPhotos();
-
                 editModal.show();
             });
         });
@@ -928,12 +917,10 @@ if (!empty($_SESSION['staged_photos'])) {
             const selectedSub = this.value;
             const photoSelect = document.getElementById('editSinglePhotoSelect');
             photoSelect.innerHTML = '<option value="">-- Loading Berkas Gambar... --</option>';
-
             if (!selectedSub) {
                 photoSelect.innerHTML = '<option value="">-- Pilih Folder Terlebih Dahulu --</option>';
                 return;
             }
-
             fetch('index.php?api_action=get_subfolder_photos&subfolder=' + encodeURIComponent(selectedSub))
                 .then(response => response.json())
                 .then(data => {
@@ -982,18 +969,14 @@ if (!empty($_SESSION['staged_photos'])) {
             let keywordsInput = document.getElementById('aiKeywordInput');
             let uraianArea = document.getElementById('uraianInput');
             let btn = this;
-
             if (!keywordsInput.value.trim()) {
                 alert('Ketik kata kunci kegiatannya terlebih dahulu, Captain!');
                 return;
             }
-
             btn.disabled = true;
             btn.innerHTML = ' Menyusun Uraian...';
-
             let formData = new FormData();
             formData.append('keywords', keywordsInput.value);
-
             fetch('gemini_handler.php', {
                     method: 'POST',
                     body: formData
