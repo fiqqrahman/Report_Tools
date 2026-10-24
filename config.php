@@ -1,2 +1,10 @@
 <?php
-define('GEMINI_API_KEY', 'AQ.Ab8RN6JJA8SlFpTt92fmh297rRtN_sF3cwwaPSTAGpyBYNLgaw');
+/**
+ * Gemini API configuration.
+ *
+ * Configure GEMINI_API_KEY in the PHP/Apache environment.
+ * Do not commit API keys to this repository.
+ */
+if (!defined('GEMINI_API_KEY')) {
+    define('GEMINI_API_KEY', trim((string) getenv('GEMINI_API_KEY')));
+}
