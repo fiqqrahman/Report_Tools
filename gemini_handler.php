@@ -41,7 +41,7 @@ $payload = [
     ]]
 ];
 
-$model = 'gemini-3.8-flash';
+$model = 'gemini-3-flash-preview';
 $endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent';
 
 $ch = curl_init($endpoint);
