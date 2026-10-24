@@ -25,10 +25,17 @@ $startMonthInput = (int)($_GET['start_month'] ?? 8);
 $endMonthInput   = (int)($_GET['end_month'] ?? 9);
 $filterYear      = (int)($_GET['year'] ?? date('Y'));
 
+$filterMode      = ($_GET['filter_mode'] ?? 'month') === 'custom' ? 'custom' : 'month';
 $startDateInput  = $_GET['start_date'] ?? '';
 $endDateInput    = $_GET['end_date'] ?? '';
 
-if (!empty($startDateInput) && !empty($endDateInput)) {
+$startMonthInput = max(1, min(12, $startMonthInput));
+$endMonthInput = max(1, min(12, $endMonthInput));
+$filterYear = max(2000, min(2100, $filterYear));
+$validStartDate = is_string($startDateInput) && preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $startDateInput) && strtotime($startDateInput) !== false && date('Y-m-d', strtotime($startDateInput)) === $startDateInput;
+$validEndDate = is_string($endDateInput) && preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $endDateInput) && strtotime($endDateInput) !== false && date('Y-m-d', strtotime($endDateInput)) === $endDateInput;
+
+if ($filterMode === 'custom' && $validStartDate && $validEndDate && $startDateInput <= $endDateInput) {
     $startDate = $startDateInput;
     $endDate   = $endDateInput;
 } else {

@@ -19,8 +19,20 @@ $selectedSubfolder = $_GET['subfolder'] ?? ($_SESSION['last_subfolder'] ?? '');
 $startMonthInput   = (int)($_GET['start_month'] ?? 8);
 $endMonthInput     = (int)($_GET['end_month'] ?? 9);
 $filterYear        = (int)($_GET['filter_year'] ?? date('Y'));
+$filterMode        = ($_GET['filter_mode'] ?? 'month') === 'custom' ? 'custom' : 'month';
 $startDateInput    = $_GET['start_date'] ?? '';
 $endDateInput      = $_GET['end_date'] ?? '';
+
+$startMonthInput = max(1, min(12, $startMonthInput));
+$endMonthInput = max(1, min(12, $endMonthInput));
+$filterYear = max(2000, min(2100, $filterYear));
+$validStartDate = is_string($startDateInput) && preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $startDateInput) && strtotime($startDateInput) !== false && date('Y-m-d', strtotime($startDateInput)) === $startDateInput;
+$validEndDate = is_string($endDateInput) && preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $endDateInput) && strtotime($endDateInput) !== false && date('Y-m-d', strtotime($endDateInput)) === $endDateInput;
+if ($filterMode !== 'custom' || !$validStartDate || !$validEndDate || $startDateInput > $endDateInput) {
+    $filterMode = 'month';
+    $startDateInput = '';
+    $endDateInput = '';
+}
 
 // Helper untuk membangun URL Redirect dinamis agar filter tidak ter-reset
 function buildRedirectUrl(array $extraParams = []): string
@@ -32,6 +44,7 @@ function buildRedirectUrl(array $extraParams = []): string
     if (isset($_GET['filter_year'])) $params['filter_year'] = $_GET['filter_year'];
     if (isset($_GET['start_date'])) $params['start_date'] = $_GET['start_date'];
     if (isset($_GET['end_date'])) $params['end_date'] = $_GET['end_date'];
+    if (isset($_GET['filter_mode'])) $params['filter_mode'] = $_GET['filter_mode'];
 
     $merged = array_merge($params, $extraParams);
     return 'index.php?' . http_build_query($merged);
@@ -324,7 +337,7 @@ $months = [
     'Desember'
 ];
 
-if (!empty($startDateInput) && !empty($endDateInput)) {
+if ($filterMode === 'custom' && $validStartDate && $validEndDate && $startDateInput <= $endDateInput) {
     $startDate = $startDateInput;
     $endDate   = $endDateInput;
 } else {
@@ -564,7 +577,7 @@ if (!empty($_SESSION['staged_photos'])) {
                 </div>
             </div>
             <div class="p-6">
-                <form method="GET" class="mb-6 space-y-3">
+                <form method="GET" id="periodFilterForm" class="mb-6 space-y-3">
                     <input type="hidden" name="subfolder" value="<?= htmlspecialchars($selectedSubfolder) ?>">
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 items-end">
                         <div class="lg:col-span-3">
@@ -588,7 +601,7 @@ if (!empty($_SESSION['staged_photos'])) {
                             <input type="number" name="filter_year" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 shadow-sm focus:border-slate-800 focus:outline-none" value="<?= $filterYear ?>">
                         </div>
                         <div class="lg:col-span-2">
-                            <button type="submit" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
+                            <button type="submit" data-period-mode="month" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium text-xs rounded-lg shadow-sm transition">
                                 Filter Periode
                             </button>
                         </div>
@@ -598,7 +611,12 @@ if (!empty($_SESSION['staged_photos'])) {
                             </button>
                         </div>
                     </div>
-                    <div id="customDateCollapse" class="<?= (!empty($startDateInput) && !empty($endDateInput)) ? '' : 'hidden' ?>">
+                    <input type="hidden" name="filter_mode" id="filterModeInput" value="<?= htmlspecialchars($filterMode) ?>">
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <span id="periodLockStatus" class="text-xs text-slate-600">Periode filter tidak dikunci</span>
+                        <button type="button" id="btnTogglePeriodLock" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100">Kunci Periode</button>
+                    </div>
+                    <div id="customDateCollapse" class="<?= $filterMode === 'custom' ? '' : 'hidden' ?>">
                         <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg grid grid-cols-1 sm:grid-cols-5 gap-3 items-end mt-3">
                             <div class="sm:col-span-2">
                                 <label class="block text-[11px] font-semibold text-slate-600 mb-1">Dari Tanggal Presisi:</label>
@@ -609,7 +627,7 @@ if (!empty($_SESSION['staged_photos'])) {
                                 <input type="date" name="end_date" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs text-slate-800 focus:border-slate-800 focus:outline-none" value="<?= htmlspecialchars($endDate) ?>">
                             </div>
                             <div>
-                                <button type="submit" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition">
+                                <button type="submit" data-period-mode="custom" class="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs rounded-lg transition">
                                     Terapkan
                                 </button>
                             </div>
@@ -619,7 +637,7 @@ if (!empty($_SESSION['staged_photos'])) {
 
                 <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
                     <span class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Pratinjau Cetak Laporan Fisik</span>
-                    <a href="cetak.php?start_date=<?= urlencode($startDate) ?>&end_date=<?= urlencode($endDate) ?>&start_month=<?= $startMonthInput ?>&end_month=<?= $endMonthInput ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg shadow-sm transition">
+                    <a href="cetak.php?filter_mode=<?= urlencode($filterMode) ?><?= $filterMode === 'custom' ? '&start_date=' . urlencode($startDate) . '&end_date=' . urlencode($endDate) : '' ?>&start_month=<?= $startMonthInput ?>&end_month=<?= $endMonthInput ?>&year=<?= $filterYear ?>&target=pdf" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg shadow-sm transition">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                         </svg>
@@ -815,6 +833,85 @@ if (!empty($_SESSION['staged_photos'])) {
         const modalImageTarget = document.getElementById('modalImageTarget');
         const editModal = new bootstrap.Modal(document.getElementById('editModal'));
         let editStagedPhotos = [];
+
+        const periodForm = document.querySelector('form#periodFilterForm');
+        const filterModeInput = document.getElementById('filterModeInput');
+        const lockButton = document.getElementById('btnTogglePeriodLock');
+        const lockStatus = document.getElementById('periodLockStatus');
+        const periodStorageKey = 'pjlpReportPeriodLock.v1';
+        const periodFormElement = periodForm;
+        let periodLocked = false;
+
+        if (periodFormElement) {
+            periodFormElement.id = 'periodFilterForm';
+            const storedPeriod = (() => {
+                try { return JSON.parse(localStorage.getItem(periodStorageKey) || 'null'); }
+                catch (_) { return null; }
+            })();
+
+            const setPeriodFieldsDisabled = (disabled) => {
+                periodFormElement.querySelectorAll('select[name="start_month"], select[name="end_month"], input[name="filter_year"], input[name="start_date"], input[name="end_date"]').forEach(el => {
+                    el.disabled = disabled;
+                });
+            };
+            const setLockUi = (locked) => {
+                periodLocked = locked;
+                setPeriodFieldsDisabled(locked);
+                lockStatus.textContent = locked ? 'Periode laporan terkunci' : 'Periode filter tidak dikunci';
+                lockButton.textContent = locked ? 'Buka Kunci Periode' : 'Kunci Periode';
+                lockButton.classList.toggle('bg-slate-800', locked);
+                lockButton.classList.toggle('text-white', locked);
+            };
+            const getPeriod = () => ({
+                filter_mode: filterModeInput.value === 'custom' ? 'custom' : 'month',
+                start_month: periodFormElement.elements.start_month.value,
+                end_month: periodFormElement.elements.end_month.value,
+                filter_year: periodFormElement.elements.filter_year.value,
+                start_date: periodFormElement.elements.start_date?.value || '',
+                end_date: periodFormElement.elements.end_date?.value || ''
+            });
+            const applyPeriod = (p) => {
+                if (!p) return;
+                ['start_month', 'end_month', 'filter_year', 'start_date', 'end_date'].forEach(name => {
+                    if (periodFormElement.elements[name] && p[name] !== undefined) periodFormElement.elements[name].value = p[name];
+                });
+                filterModeInput.value = p.filter_mode === 'custom' ? 'custom' : 'month';
+                document.getElementById('customDateCollapse')?.classList.toggle('hidden', filterModeInput.value !== 'custom');
+            };
+
+            if (storedPeriod?.locked && storedPeriod.period) {
+                applyPeriod(storedPeriod.period);
+                const url = new URL(window.location.href);
+                Object.entries(storedPeriod.period).forEach(([key, value]) => {
+                    if (value !== '') url.searchParams.set(key, value);
+                    else url.searchParams.delete(key);
+                });
+                if (url.href !== window.location.href) window.location.replace(url.href);
+                setLockUi(true);
+            }
+            lockButton?.addEventListener('click', () => {
+                if (periodLocked) {
+                    localStorage.setItem(periodStorageKey, JSON.stringify({locked:false, period:getPeriod()}));
+                    setLockUi(false);
+                } else {
+                    localStorage.setItem(periodStorageKey, JSON.stringify({locked:true, period:getPeriod()}));
+                    setLockUi(true);
+                }
+            });
+            periodFormElement.querySelectorAll('button[data-period-mode]').forEach(button => {
+                button.addEventListener('click', () => {
+                    filterModeInput.value = button.dataset.periodMode;
+                    localStorage.setItem(periodStorageKey, JSON.stringify({locked:periodLocked, period:getPeriod()}));
+                });
+            });
+            periodFormElement.addEventListener('submit', (event) => {
+                if (periodLocked) {
+                    event.preventDefault();
+                    return;
+                }
+                localStorage.setItem(periodStorageKey, JSON.stringify({locked:false, period:getPeriod()}));
+            });
+        }
 
         document.getElementById('btnToggleCustomDate')?.addEventListener('click', function() {
             const customDateDiv = document.getElementById('customDateCollapse');
